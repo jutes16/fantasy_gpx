@@ -41,7 +41,7 @@ jobs:
       
       - name: Run R update script
         working-directory: nba
-        run: Rscript nba_mvp_odds.R    
+        run: Rscript nba_mvp_odds.r
 
       - name: Commit changes in data folder
         run: |
