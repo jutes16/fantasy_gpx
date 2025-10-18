@@ -44,6 +44,7 @@ jobs:
         run: Rscript nba_mvp_odds.r
 
       - name: Commit changes in data folder
+        working-directory: nba
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
