@@ -1,0 +1,5 @@
+library(tidyverse)
+library(nbastatR)      # or hoopR, if you prefer their player endpoints
+library(hoopR)
+library(janitor)
+library(ggrepel)
