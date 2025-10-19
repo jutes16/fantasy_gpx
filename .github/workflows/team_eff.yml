@@ -1,0 +1,63 @@
+name: Generate Team Efficiency Plots
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 1 * *'  # every morning 7 AM UTC
+
+jobs:
+  Generate-Team-Plots:
+    name: Run Efficiency Plot for Each NBA Team
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3  
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+          r-version: 'release'
+          
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get -y install libcurl4-openssl-dev libssl-dev libxml2-dev
+        shell: bash
+
+      - name: Cache CRAN packages
+        uses: actions/cache@v3 
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: ${{ runner.os }}-r-
+          
+      - name: Install CRAN packages
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with: 
+          packages: tidyverse, hoopR, janitor, ggrepel, jsonlite, ggimage, rvest, progressr, purrr
+
+      - name: Run Team Efficiency Script for All Teams
+        working-directory: nba
+        run: |
+          Rscript -e "
+          library(purrr);
+          teams <- c('ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW',
+                     'HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK',
+                     'OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WSH');
+          walk(teams, function(t) {
+            message('Running efficiency plot for ', t);
+            system(paste('Rscript team_eff_plots.r', t), intern = TRUE);
+          })
+          "
+
+      - name: Commit generated plots
+        working-directory: nba
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add plots/*.png
+          git diff --cached --quiet || git commit -m 'Auto-update: team efficiency plots'
+
+      - name: Push changes
+        run: git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
