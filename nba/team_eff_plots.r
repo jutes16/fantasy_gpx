@@ -8,7 +8,7 @@ lapply(required_packages, require, character.only = TRUE)
 # Load NBA game data for the  season
 season_year <- 2024
 # Choose the team to plot (by NBA 3-letter abbreviation)
-team_input <- "OKC"  # NBA 3-letter abbreviation (e.g., "UTA")
+team_input <- "UTA"  # NBA 3-letter abbreviation (e.g., "UTA")
 team_input_2 <- NULL  # e.g., "BOS" or NULL optional parameter to compare two teams ---
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -22,7 +22,7 @@ if (length(args) >= 1) {
 # If left NULL, data for the full season will be loaded.
 game_segment_start <- NULL  # e.g., "2024-02-01" or NULL for no start date filter
 game_segment_end <- NULL    # e.g., "2024-03-15" or NULL for no end date filter
-last_n_games <- 20       # e.g., 15 for last 15 games, or NULL to ignore
+last_n_games <- NULL       # e.g., 15 for last 15 games, or NULL to ignore
 
 # Load datra
 nba_team_box <- hoopR::load_nba_team_box(season_year)
@@ -263,7 +263,7 @@ if (!is.null(team_input_2)) {
   max_range <- max(max_range, max_range_2)
 }
 range_limit <- ceiling(max_range * 10) / 10  # round up to nearest 0.1 for nicer axis limits
-range_limit <- 20 # fixed range for better comparability
+range_limit <- 10 # fixed range for better comparability
 
 
 #

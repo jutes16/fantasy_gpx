@@ -1,0 +1,25 @@
+# Ignore generated plots, images, and data files
+plots/
+nba/plots/
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# Ignore data exports and cached files
+data/
+*.csv
+*.json
+*.rds
+*.rdata
+
+# R and RStudio specific
+.Rhistory
+.RData
+.Rproj.user/
+.Rproj
+
+# OS and temporary files
+.DS_Store
+*.tmp
+*.log
