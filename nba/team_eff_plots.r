@@ -9,7 +9,7 @@ lapply(required_packages, require, character.only = TRUE)
 season_year <- 2024
 # Choose the team to plot (by NBA 3-letter abbreviation)
 team_input <- "UTA"  # NBA 3-letter abbreviation (e.g., "UTA")
-team_input_2 <- NULL  # e.g., "BOS" or NULL optional parameter to compare two teams ---
+team_input_2 <- "CLE"  # e.g., "BOS" or NULL optional parameter to compare two teams ---
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) >= 1) {

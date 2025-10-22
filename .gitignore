@@ -7,8 +7,6 @@ nba/plots/
 *.svg
 
 # Ignore data exports and cached files
-data/
-*.csv
 *.json
 *.rds
 *.rdata

@@ -6,8 +6,8 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(required_packages, require, character.only = TRUE)
 
 # Load NBA game data for the  season
-highlight_team <- "BOS"
-season_year <- 2024
+highlight_team <- "OKC"
+season_year <- 2025
 args <- commandArgs(trailingOnly = TRUE)
 
 # --- New optional parameters to filter data by game segment ---
@@ -224,15 +224,28 @@ base_plot <- ggplot() +
 # --- Top Panel: Team Logos Only ---
 p_top <- base_plot
 
+# Show all team logos in grey except highlight_team, which is shown in color
 if (requireNamespace("ggimage", quietly = TRUE)) {
-  p_top <- p_top + ggimage::geom_image(
-    data = team_dash_clean %>%
-      left_join(team_lookup %>% select(team_name, team_logo), by = "team_name") %>%
-      filter(!is.na(team_logo)),
-    aes(x = off_rating_std, y = def_rating_std, image = team_logo),
-    size = 0.08,
-    inherit.aes = FALSE
-  )
+  # Semi-transparent logos for all teams except the highlight
+  p_top <- p_top +
+    ggimage::geom_image(
+      data = team_dash_clean %>%
+        left_join(team_lookup %>% select(team_name, team_logo, team_abbreviation), by = "team_name") %>%
+        filter(team_abbreviation != highlight_team & !is.na(team_logo)),
+      aes(x = off_rating_std, y = def_rating_std, image = team_logo),
+      size = 0.08,
+      alpha = 0.2,
+      inherit.aes = FALSE
+    ) +
+    # Highlighted team logo in color, fully opaque
+    ggimage::geom_image(
+      data = team_dash_clean %>%
+        left_join(team_lookup %>% select(team_name, team_logo, team_abbreviation), by = "team_name") %>%
+        filter(team_abbreviation == highlight_team & !is.na(team_logo)),
+      aes(x = off_rating_std, y = def_rating_std, image = team_logo),
+      size = 0.09,
+      inherit.aes = FALSE
+    )
 }
 
 p_top <- p_top +
