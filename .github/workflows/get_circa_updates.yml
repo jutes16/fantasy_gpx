@@ -1,0 +1,74 @@
+name: Fetch Google Sheets Tabs
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Tuesday at 08:30 UTC
+    - cron: '30 8 * * 2'
+
+jobs:
+  fetch-google-sheets:
+    name: Pull latest tabs from Google Sheets
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+          r-version: 'release'
+
+      - name: Install system libs
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libcurl4-openssl-dev libssl-dev libxml2-dev
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
+          restore-keys: ${{ runner.os }}-r-
+
+      - name: Install R packages
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::googlesheets4
+            any::janitor
+            any::dplyr
+            any::readr
+            any::glue
+            any::stringr
+
+      - name: Write Google service account JSON from secret
+        env:
+          GSA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+        run: |
+          if [ -z "$GSA_JSON" ]; then
+            echo "Missing secret GDRIVE_SA_JSON"; exit 1
+          fi
+          echo "$GSA_JSON" > "${RUNNER_TEMP}/gsa.json"
+          echo "GDRIVE_SERVICE_ACCOUNT_JSON=${RUNNER_TEMP}/gsa.json" >> "$GITHUB_ENV"
+
+      - name: List files (debug)
+        run: ls -R
+
+      - name: Run fetch script
+        working-directory: betting
+        run: Rscript fetch_google_sheets_tabs.R
+
+      - name: Commit new data CSVs
+        working-directory: betting
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/google_sheet_pull_*.csv
+          git diff --cached --quiet || git commit -m "Auto-update: Google Sheets tabs"
+
+      - name: Push changes
+        run: git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
