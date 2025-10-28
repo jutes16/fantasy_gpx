@@ -6,8 +6,8 @@ if(length(new_packages)) install.packages(new_packages)
 lapply(required_packages, require, character.only = TRUE)
 
 # Load NBA game data for the  season
-highlight_team <- "OKC"
-season_year <- 2025
+highlight_team <- "DET"
+season_year <- 2023
 args <- commandArgs(trailingOnly = TRUE)
 
 # --- New optional parameters to filter data by game segment ---
@@ -16,7 +16,7 @@ args <- commandArgs(trailingOnly = TRUE)
 # If left NULL, data for the full season will be loaded.
 game_segment_start <- NULL  # e.g., "2024-02-01" or NULL for no start date filter
 game_segment_end <- NULL    # e.g., "2024-03-15" or NULL for no end date filter
-last_n_games <- NULL       # e.g., 15 for last 15 games, or NULL to ignore
+last_n_games <- 10      # e.g., 15 for last 15 games, or NULL to ignore
 
 # Load datra
 nba_team_box <- hoopR::load_nba_team_box(season_year)
@@ -226,7 +226,6 @@ p_top <- base_plot
 
 # Show all team logos in grey except highlight_team, which is shown in color
 if (requireNamespace("ggimage", quietly = TRUE)) {
-  # Semi-transparent logos for all teams except the highlight
   p_top <- p_top +
     ggimage::geom_image(
       data = team_dash_clean %>%
@@ -234,7 +233,6 @@ if (requireNamespace("ggimage", quietly = TRUE)) {
         filter(team_abbreviation != highlight_team & !is.na(team_logo)),
       aes(x = off_rating_std, y = def_rating_std, image = team_logo),
       size = 0.08,
-      alpha = 0.2,
       inherit.aes = FALSE
     ) +
     # Highlighted team logo in color, fully opaque
