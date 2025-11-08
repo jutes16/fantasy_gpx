@@ -7,12 +7,12 @@ library(ggimage)
 library(magick)
 
 # ============== CONFIGURATION FLAGS ==============
-highlight_teams <- c("CLE", "BOS", "OKC")  # List of teams to highlight
-season_year <- 2025
+highlight_teams <- c("POR")  # List of teams to highlight
+season_year <- 2022
 rolling_window <- 10
-create_gif <- TRUE  # Set to FALSE for single static plot
+create_gif <- FALSE  # Set to FALSE for single static plot
 include_playoffs <- FALSE  # Set to TRUE to include playoff games
-rating_type <- "off_rating"  # Options: "net_rating", "off_rating", "def_rating"
+rating_type <- "net_rating"  # Options: "net_rating", "off_rating", "def_rating"
 # ================================================
 
 # Determine season type
@@ -239,6 +239,8 @@ if (create_gif) {
   # Create single static plot (latest data)
   message("Creating static plot...")
   latest_game <- max(team_rolling_ratings$games_played)
+  latest_game <- 82  # Force to full season for static plot
+
   final_plot <- create_rating_plot(team_rolling_ratings, latest_game, 
                                    highlight_teams, rating_column, rating_type)
   

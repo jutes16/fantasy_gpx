@@ -17,7 +17,16 @@ picks_per_week  <- 5
 metric          <- "units"         # "pct" (deviation from 50%) or "units"
 push_points     <- 0.5           # used only if computing weekly points from pick columns
 save_plot       <- TRUE
+
 plot_file       <- if (metric == "pct") file.path(base_dir, "plots", "circa_tornado_pct.png") else file.path(base_dir, "plots", "circa_tornado_units.png")
+
+# New: prefer latest Google Sheet CSV from /data
+data_dir                 <- file.path(base_dir, "data")
+# Separate toggles & regex for Google-derived CSVs
+use_latest_picks_csv     <- TRUE
+picks_tab_regex          <- "Picks_by_Person"   # identifies the Picks sheet export
+use_latest_games_csv     <- TRUE
+games_tab_regex          <- "GAMES"             # identifies the Games/ATS sheet export
 
 # New: scatter & tables parameters
 scatter_player <- NULL   # e.g., "Alex Izsak" to filter; NULL for all players
@@ -47,15 +56,37 @@ normalize_nfl_abbr <- function(x) {
   )
 }
 
-# Ensure output directories exist under base_dir
+ # Ensure output directories exist under base_dir
 if (!dir.exists(base_dir)) dir.create(base_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(base_dir, "plots"), recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(base_dir, "data"), recursive = TRUE, showWarnings = FALSE)
 
-message("Reading: ", normalizePath(path, mustWork = FALSE))
 
 # ---- Read & normalize ----
-raw <- readxl::read_excel(path, sheet = sheet, .name_repair = "minimal") %>%
-  janitor::clean_names()
+# Helper to pick the most recent CSV in /data (optionally filter by regex)
+latest_csv <- function(dir, pattern = NULL) {
+  files <- list.files(dir, pattern = "\\.csv$", full.names = TRUE)
+  if (!is.null(pattern)) {
+    files <- files[grepl(pattern, basename(files), ignore.case = TRUE)]
+  }
+  if (length(files) == 0) return(NA_character_)
+  info <- file.info(files)
+  files[which.max(info$mtime)]
+}
+
+picks_csv_path <- if (isTRUE(use_latest_picks_csv)) latest_csv(data_dir, picks_tab_regex) else NA_character_
+
+if (!is.na(picks_csv_path)) {
+  message("Reading latest Picks CSV: ", normalizePath(picks_csv_path, mustWork = FALSE))
+  raw <- readr::read_csv(picks_csv_path, show_col_types = FALSE) %>%
+    janitor::clean_names() %>%
+    janitor::remove_empty(c("rows","cols"))
+} else {
+  message("No Picks CSV found in ", data_dir, "; falling back to Excel: ", normalizePath(path, mustWork = FALSE))
+  raw <- readxl::read_excel(path, sheet = sheet, .name_repair = "minimal") %>%
+    janitor::clean_names() %>%
+    janitor::remove_empty(c("rows","cols"))
+}
 
 # Guess key columns (robust to slight name differences)
 week_col <- names(raw)[str_detect(names(raw), "^week$|week", negate = FALSE)]
@@ -147,6 +178,18 @@ df_ordered <- df %>%
     cum_units  = cumsum(replace_na(units_week, 0))
   ) %>%
   ungroup()
+
+  # ---- Clean bad rows (missing names, summary/total rows, implausible weekly points) ----
+  df <- df %>%
+    mutate(name = stringr::str_trim(name)) %>%
+    filter(!is.na(name) & nzchar(name)) %>%
+    # drop obvious summary/total rows if present
+    filter(!stringr::str_detect(toupper(name), "^TOTAL$|^GRAND TOTAL$|^SUMMARY$")) %>%
+    # ensure weekly_points is numeric and within [0, picks_per_week]; otherwise treat as NA
+    mutate(
+      weekly_points = suppressWarnings(as.numeric(weekly_points)),
+      weekly_points = dplyr::if_else(weekly_points > picks_per_week | weekly_points < 0, NA_real_, weekly_points)
+    )
 
 # Season totals by player
 summary_tbl <- df %>%
@@ -267,34 +310,48 @@ print(p)
 cat("\n=== SUMMARY (top 10 by correct % ) ===\n")
 print(head(summary_tbl, 10))
 
-ats_path <- file.path(base_dir, "nfl_picks.csv")
+# ---- GAMES / ATS loading (Google CSV preferred) ----
 ats_records <- NULL
-message("Looking for ATS CSV at: ", normalizePath(ats_path, mustWork = FALSE))
-if (file.exists(ats_path)) {
-  ats_raw <- readr::read_csv(ats_path, show_col_types = FALSE) %>%
+games_csv_path <- if (isTRUE(use_latest_games_csv)) latest_csv(data_dir, games_tab_regex) else NA_character_
+
+if (!is.na(games_csv_path)) {
+  message("Reading latest GAMES CSV: ", normalizePath(games_csv_path, mustWork = FALSE))
+  ats_raw <- readr::read_csv(games_csv_path, show_col_types = FALSE) %>%
     janitor::clean_names()
-  
-  # Calculate ATS record for each team
-  ats_records <- ats_raw %>%
-    filter(!is.na(spread_winner)) %>%
-    tidyr::pivot_longer(cols = c(away, home), names_to = "location", values_to = "team") %>%
-    mutate(
-      ats_win = (location == "away" & spread_winner == team) |
-                (location == "home" & spread_winner == team)
-    ) %>%
-    group_by(team) %>%
-    summarise(
-      ats_wins = sum(ats_win),
-      ats_losses = n() - sum(ats_win),
-      ats_games = n(),
-      ats_pct = ats_wins / ats_games,
-      .groups = "drop"
-    ) %>%
-    rename(team_code = team)
-  
-  message("Loaded ATS records from: ", ats_path)
 } else {
-  message("ATS records file not found: ", ats_path)
+  # Fallback: legacy local CSV
+  legacy_ats_path <- file.path(base_dir, "nfl_picks.csv")
+  message("No GAMES CSV found in ", data_dir, "; checking legacy file: ", normalizePath(legacy_ats_path, mustWork = FALSE))
+  if (file.exists(legacy_ats_path)) {
+    ats_raw <- readr::read_csv(legacy_ats_path, show_col_types = FALSE) %>%
+      janitor::clean_names()
+    message("Loaded legacy ATS records from: ", legacy_ats_path)
+  } else {
+    ats_raw <- NULL
+    message("ATS/GAMES data not found in Google CSV or legacy CSV.")
+  }
+}
+
+if (!is.null(ats_raw)) {
+  # Calculate ATS record for each team (robust to column casing)
+  ats_records <- ats_raw %>%
+    dplyr::filter(!is.na(.data[["spread_winner"]])) %>%
+    tidyr::pivot_longer(cols = c("away", "home"), names_to = "location", values_to = "team") %>%
+    dplyr::mutate(
+      team        = normalize_nfl_abbr(stringr::str_to_upper(team)),
+      spread_winner = normalize_nfl_abbr(stringr::str_to_upper(.data[["spread_winner"]])),
+      ats_win     = (location == "away" & spread_winner == team) |
+                    (location == "home" & spread_winner == team)
+    ) %>%
+    dplyr::group_by(team) %>%
+    dplyr::summarise(
+      ats_wins   = sum(ats_win, na.rm = TRUE),
+      ats_losses = dplyr::n() - sum(ats_win, na.rm = TRUE),
+      ats_games  = dplyr::n(),
+      ats_pct    = ats_wins / ats_games,
+      .groups    = "drop"
+    ) %>%
+    dplyr::rename(team_code = team)
 }
 
 # ---- Team pick tables & scatter (NFL) ----

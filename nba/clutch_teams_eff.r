@@ -10,7 +10,7 @@ lapply(required_packages, require, character.only = TRUE)
 highlight_team <- "POR"
 season_year <- 2023
 clutch_definition <- "Last5Minutes"  # Options: "Last2Minutes", "Last5Minutes", "Last1Minute"
-date_from <- "2023-03-24"  # e.g., "2023-02-01" or NULL for full season
+date_from <- "2023-01-22"  # e.g., "2023-02-01" or NULL for full season
 date_to <- NULL    # e.g., "2023-04-15" or NULL for full season
 show_efficiency_change <- TRUE  # TRUE to plot change from regular to clutch efficiency
 
@@ -332,17 +332,29 @@ p_bottom <- ggplot() +
 combined_plot <- p_top / p_bottom + plot_layout(ncol = 1, heights = c(1, 1))
 
 # Create summary table for highlighted team
-team_summary <- team_clutch_ratings %>%
-  filter(team_abbreviation == highlight_team) %>%
-  select(team_name, gp, w, l, w_pct, off_rating, def_rating, net_rating,
-         if(show_efficiency_change) c(reg_off_rating, reg_def_rating, off_rating_change, def_rating_change) else NULL) %>%
-  mutate(across(where(is.character), as.numeric))
-
-player_summary <- clutch_player_stats %>%
-  filter(team_abbreviation == highlight_team) %>%
-  select(player_name, gp, min, off_rating, def_rating, net_rating, usg_pct,
-         if(show_efficiency_change) c(reg_off_rating, reg_def_rating, off_rating_change, def_rating_change) else NULL) %>%
-  arrange(desc(min))
+if (show_efficiency_change) {
+  team_summary <- team_clutch_ratings %>%
+    filter(team_abbreviation == highlight_team) %>%
+    select(team_name, gp, w, l, w_pct, reg_off_rating, off_rating, off_rating_change,
+           reg_def_rating, def_rating, def_rating_change, net_rating) %>%
+    mutate(across(where(is.character), as.numeric))
+  
+  player_summary <- clutch_player_stats %>%
+    filter(team_abbreviation == highlight_team) %>%
+    select(player_name, gp, min, reg_off_rating, off_rating, off_rating_change,
+           reg_def_rating, def_rating, def_rating_change, net_rating, usg_pct) %>%
+    arrange(desc(min))
+} else {
+  team_summary <- team_clutch_ratings %>%
+    filter(team_abbreviation == highlight_team) %>%
+    select(team_name, gp, w, l, w_pct, off_rating, def_rating, net_rating) %>%
+    mutate(across(where(is.character), as.numeric))
+  
+  player_summary <- clutch_player_stats %>%
+    filter(team_abbreviation == highlight_team) %>%
+    select(player_name, gp, min, off_rating, def_rating, net_rating, usg_pct) %>%
+    arrange(desc(min))
+}
 
 # Print tables to console
 message("\n=== TEAM CLUTCH RATINGS ===")

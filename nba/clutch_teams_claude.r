@@ -6,7 +6,7 @@ library(ggrepel)
 library(ggimage)
 
 # ============== CONFIGURATION ==============
-season_year <- 2023
+season_year <- 2022
 include_playoffs <- FALSE
 clutch_window <- "Last 2 Minutes"  # Options: "Last 5 Minutes", "Last 4 Minutes", etc.
 score_margin <- 5                   # Within +/- N points
