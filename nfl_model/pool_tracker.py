@@ -8,6 +8,9 @@ Pool tracker: weekly 5-pick record, season standings, CLV, calibration.
                                      <- record Claude's 5 for a week (team codes);
                                         graded like the others once you run
                                         log_week.py grade
+                                     report also grades market signals (sharp
+                                     side, money vs tickets, line movement)
+                                     from the columns in weekly_lines.xlsx
     python3 pool_tracker.py legacy   <- old report from data/archive/pool_log.csv
     python3 pool_tracker.py seed     <- load the Week 3 2026 card into pool_log.csv
 
@@ -25,6 +28,11 @@ from scipy import stats
 LOG = "data/archive/pool_log.csv"
 SUBMISSIONS = "data/pool_picks_log.csv"
 CLAUDE_PICKS = "data/claude_picks.csv"
+# past seasons: data/signals_<season>.csv (hand-collected sharp sides/splits) and,
+# if that year's pool sheet exists, data/pool_<season>_merged.csv
+CURRENT_SEASON = 2026
+NFLVERSE_GAMES = "data/games_clean.csv"
+ACTION_SPLITS = "data/action_splits.csv"  # fetch_splits.py (Action Network via Apify)
 PICKS_PER_WEEK = 5
 BASELINE = 0.50  # no vig in a pool
 
@@ -246,6 +254,231 @@ def compare(sets):
               "Tiny sample: noise for now.)")
 
 
+SPLIT_GAP = 10   # money% minus bets% (pts) that counts as "money > tickets"
+PUBLIC_MAX = 35  # a side with at most this % of tickets is "the unpopular side"
+
+
+def past_seasons():
+    """Completed seasons with any signal data (hand-collected or Action Network)."""
+    found = set()
+    for f in os.listdir("data"):
+        if f.startswith("signals_") and f.endswith(".csv"):
+            found.add(int(f[8:12]))
+    if os.path.exists(ACTION_SPLITS):
+        found |= set(pd.read_csv(ACTION_SPLITS).season.astype(int))
+    return sorted(s for s in found if s < CURRENT_SEASON)
+
+
+def load_season_signals(season, against="pool"):
+    """One past season's games with signals, in the layout signals() expects.
+
+    against="pool":   grade at that season's pool line when
+                      data/pool_<season>_merged.csv exists, else the market close.
+    against="market": always grade at the nflverse closing line.
+
+    `pool_line` is the grading line; `mkt_line_at_submit` is the closing line
+    (so "line moved toward" measures open -> close). Returns (frame, source).
+
+    Action Network (data/action_splits.csv) is the primary source for splits
+    and opening lines, so every week uses the same book. Hand-collected values
+    (data/signals_<season>.csv) fill in only where Action Network has nothing.
+    Bets % and money % are always taken as a pair. Sharp sides come only from
+    the hand-collected file, since Action Network has none.
+    """
+    from fetch_splits import canon
+    keys = ["season", "week", "away", "home"]
+
+    # nflverse: spread_line POSITIVE = home favored, result = home margin.
+    # Flip to this model's convention (negative = home favored).
+    nfl = pd.read_csv(NFLVERSE_GAMES, low_memory=False)
+    nfl = nfl[(nfl.season == season) & (nfl.game_type == "REG")
+              & nfl.result.notna() & nfl.spread_line.notna()]
+    p = pd.DataFrame(dict(season=nfl.season, week=nfl.week,
+                          away=nfl.away_team.map(canon), home=nfl.home_team.map(canon),
+                          close=-nfl.spread_line, margin=nfl.result))
+    p["pool_line"] = p.close
+    p["mkt_line_at_submit"] = p.close
+    source = "market close"
+
+    pool_file = f"data/pool_{season}_merged.csv"
+    if against == "pool" and os.path.exists(pool_file):
+        pl = pd.read_csv(pool_file).rename(columns={"wk": "week"})
+        pl = pd.DataFrame(dict(season=pl.season, week=pl.week, away=pl.away.map(canon),
+                               home=pl.home.map(canon), _pool=-pl.pool_line))
+        p = p.merge(pl, on=keys, how="inner")
+        p["pool_line"] = p._pool
+        source = "pool line"
+    if p.empty:
+        return p, source
+
+    sig_file = f"data/signals_{season}.csv"
+    s = pd.read_csv(sig_file) if os.path.exists(sig_file) else pd.DataFrame(columns=keys)
+    s["away"], s["home"] = s.away.map(canon), s.home.map(canon)
+    g = p.merge(s, on=keys, how="left")
+    for c in ("open_line", "home_bets_pct", "home_money_pct"):
+        if c not in g.columns:
+            g[c] = np.nan
+
+    if os.path.exists(ACTION_SPLITS):
+        an = pd.read_csv(ACTION_SPLITS)
+        g = g.merge(an[keys + ["an_open_line", "an_home_bets_pct", "an_home_money_pct"]],
+                    on=keys, how="left")
+        g["open_line"] = g.an_open_line.fillna(g.open_line)
+        pair = g.an_home_bets_pct.notna() & g.an_home_money_pct.notna()
+        g.loc[pair, "home_bets_pct"] = g.loc[pair, "an_home_bets_pct"]
+        g.loc[pair, "home_money_pct"] = g.loc[pair, "an_home_money_pct"]
+    return g, source
+
+
+def signals(sub, title="MARKET SIGNALS"):
+    """ATS record of each market signal, graded at the pool line, all games.
+
+    Only games where the signal was recorded count, so early weeks with no
+    splits simply drop out rather than dilute the numbers.
+    """
+    need = {"margin", "pool_line"}
+    if not need <= set(sub.columns):
+        return
+    g = sub.dropna(subset=["margin", "pool_line"]).copy()
+    if g.empty:
+        return
+    cover = g.margin + g.pool_line          # >0 home covers, <0 away covers
+    home_res = np.where(cover > 0, "W", np.where(cover < 0, "L", "P"))
+    flip = {"W": "L", "L": "W", "P": "P"}
+
+    def col(c):
+        return g[c] if c in g.columns else pd.Series(np.nan, index=g.index)
+
+    bets, money = col("home_bets_pct"), col("home_money_pct")
+    sharp = col("sharp_side").astype(str).str.strip().str.lower()
+    move = g.mkt_line_at_submit - col("open_line")   # <0 = moved toward home
+
+    sharp = sharp.where(sharp.isin(["home", "away"]))
+    stype = col("sharp_type").astype(str).str.strip().str.lower()
+    sides = {
+        "sharp side": sharp,
+        # book = a sportsbook reported sharp action; pro = one pro bettor's
+        # pick or a single large bet (only past seasons carry this column)
+        "  reported by books": sharp.where(stype == "book"),
+        "  one pro / one big bet": sharp.where(stype == "pro"),
+        f"money > tickets by {SPLIT_GAP}+": pd.Series(np.select(
+            [money - bets >= SPLIT_GAP, (100 - money) - (100 - bets) >= SPLIT_GAP],
+            ["home", "away"], None), index=g.index),
+        f"<= {PUBLIC_MAX}% of tickets": pd.Series(np.select(
+            [bets <= PUBLIC_MAX, 100 - bets <= PUBLIC_MAX],
+            ["home", "away"], None), index=g.index),
+        "line moved toward": pd.Series(np.select(
+            [move < 0, move > 0], ["home", "away"], None), index=g.index),
+    }
+
+    rows = []
+    for name, side in sides.items():
+        side = side.dropna()
+        if side.empty:
+            continue
+        res = [home_res[g.index.get_loc(i)] if s == "home"
+               else flip[home_res[g.index.get_loc(i)]] for i, s in side.items()]
+        w, l = res.count("W"), res.count("L")
+        rows.append((name, w, l, res.count("P")))
+    if not rows:
+        return
+
+    print("\n" + "=" * 70)
+    print(title + ("" if "(vs " in title else "  (vs pool line)"))
+    print("every graded game with the signal on record")
+    print("=" * 70)
+    for name, w, l, p in rows:
+        rate, lo, hi = wilson(w, w + l)
+        print(f"  {name:<24} {w}-{l}" + (f"-{p}" if p else "") +
+              f"   {rate*100:5.1f}%   CI [{lo*100:.0f}%, {hi*100:.0f}%]")
+
+    # did YOUR picks do better with the sharps or against them?
+    you = g[(g.get("submitted").astype(str).str.lower() == "true")
+            & sharp.isin(["home", "away"])] if "submitted" in g else g.iloc[:0]
+    if not you.empty:
+        print("\n  your picks vs the sharp side:")
+        for lbl, m in (("with sharps", you.side == sharp[you.index]),
+                       ("against sharps", you.side != sharp[you.index])):
+            r = you[m].result
+            print(f"    {lbl:<15} {int((r=='W').sum())}-{int((r=='L').sum())}")
+    print("  (signals only count from the first week you recorded them.)")
+
+
+ELWAY_BUCKETS = [0.01, 0.5, 1.0, 2.0, 3.0, 99]
+ELWAY_LABELS = ["0.5", "1", "1.5-2", "2.5-3", "3.5+"]
+
+
+def elway_picks(sub, line_col):
+    """One ELWAY 'pick' per game where its projection differs from `line_col`:
+    the side the projection says that line undervalues. Graded at that line."""
+    need = {"elway_line", "margin", line_col}
+    if not need <= set(sub.columns):
+        return pd.DataFrame()
+    g = sub.dropna(subset=list(need)).copy()
+    g["gap"] = (g.elway_line - g[line_col]).abs()
+    g = g[g.gap > 0]
+    if g.empty:
+        return g
+    side = np.where(g.elway_line < g[line_col], "home", "away")
+    cover = g.margin + g[line_col]
+    if "result" in g:                   # the log's own column = YOUR result
+        g["result_sub"] = g["result"]
+    g["result"] = np.where(cover == 0, "P",
+                           np.where((cover > 0) == (side == "home"), "W", "L"))
+    g["elway_side"] = side
+    g["bucket"] = pd.cut(g.gap, ELWAY_BUCKETS, labels=ELWAY_LABELS)
+    return g
+
+
+def elway_report(sub):
+    """ELWAY's record when it disagrees with your line (and with the close),
+    by size of disagreement, plus how your picks did with/without it."""
+    mine = elway_picks(sub, "pool_line")
+    if mine.empty:
+        return
+    print("\n" + "=" * 70)
+    print("ELWAY  (takes the side its projection says the line undervalues)")
+    print("=" * 70)
+
+    def table(g, label):
+        print(f"\n  vs {label}")
+        print(f"    {'gap':<7}{'record':>10}{'win %':>9}")
+        for b in ELWAY_LABELS:
+            r = g[g.bucket == b].result
+            w, l, p = (r == "W").sum(), (r == "L").sum(), (r == "P").sum()
+            if w + l + p:
+                print(f"    {b:<7}{f'{w}-{l}' + (f'-{p}' if p else ''):>10}"
+                      f"{w / (w + l) * 100 if w + l else 0:>8.0f}%")
+        w, l = (g.result == "W").sum(), (g.result == "L").sum()
+        rate, lo, hi = wilson(w, w + l)
+        print(f"    {'ALL':<7}{f'{w}-{l}':>10}{rate * 100:>8.1f}%   CI [{lo*100:.0f}%, {hi*100:.0f}%]")
+        big = g[g.gap >= 1.0]
+        bw, bl = (big.result == "W").sum(), (big.result == "L").sum()
+        if bw + bl:
+            print(f"    {'gap 1+':<7}{f'{bw}-{bl}':>10}{bw / (bw + bl) * 100:>8.1f}%")
+
+    table(mine, "your line (pool)")
+    close = elway_picks(sub, "closing_line")
+    if not close.empty:
+        table(close, "closing line (the harder test)")
+
+    print("\n  by week (vs your line):")
+    for (s, wk), g in mine.groupby(["season", "week"]):
+        w, l = (g.result == "W").sum(), (g.result == "L").sum()
+        print(f"    {int(s)} wk{int(wk):<3} {w}-{l}")
+
+    # your submitted picks: with ELWAY or against it
+    you = mine[mine.get("submitted").astype(str).str.lower() == "true"] \
+        if "submitted" in mine else mine.iloc[:0]
+    if not you.empty:
+        print("\n  your picks, where ELWAY had a side:")
+        for lbl, m in (("with ELWAY", you.side == you.elway_side),
+                       ("against ELWAY", you.side != you.elway_side)):
+            r = you[m].result_sub
+            print(f"    {lbl:<14} {int((r == 'W').sum())}-{int((r == 'L').sum())}")
+    print("  (small samples: judge ELWAY on the gap 1+ row over many weeks)")
+
+
 def seed():
     """Week 3 2026: the 5 the pool engine would have submitted."""
     rows = [
@@ -281,6 +514,20 @@ if __name__ == "__main__":
             print(f"\n########  {d.attrs['label']}  ########")
             report(d)
         compare(sets)
+        if os.path.exists(SUBMISSIONS):
+            elway_report(pd.read_csv(SUBMISSIONS))
+            signals(pd.read_csv(SUBMISSIONS), "MARKET SIGNALS 2026")
+        # each past season at its own grading line (pool sheet if we have one)
+        for season in past_seasons():
+            g, src = load_season_signals(season)
+            signals(g, f"MARKET SIGNALS {season} (vs {src})")
+        # and all past seasons on one common footing: the market close
+        frames = [load_season_signals(s, against="market")[0] for s in past_seasons()]
+        frames = [f for f in frames if not f.empty]
+        if len(frames) > 1:
+            yrs = f"{past_seasons()[0]}-{past_seasons()[-1]}"
+            signals(pd.concat(frames, ignore_index=True),
+                    f"MARKET SIGNALS {yrs} COMBINED (vs market close)")
         raise SystemExit
     if cmd == "claude":
         add_claude(int(sys.argv[2]), [t.strip().upper() for t in sys.argv[3].split(",")])

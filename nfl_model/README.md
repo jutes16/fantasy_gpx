@@ -16,33 +16,103 @@ off the live market?" Only the second question has a measurable edge
 behind it, and it does not require being a better football analyst than
 anyone else in the pool.
 
+## Setup
+
+Run everything from `nfl_model/`, in the conda environment that has the
+requirements installed (`pip install -r requirements.txt`).
+
+Betting splits come from Action Network through the Apify actor
+`zen-studio/action-network-odds` (about $2 a season, inside Apify's free
+credits). Put your Apify token in `~/.zshrc`, never in the repo:
+
+```
+export APIFY_TOKEN="..."
+```
+
 ## Weekly workflow
 
-1. Add the week's games to `data/weekly_lines.xlsx` (`python3 update_mkt.py <week> --add`
-   pulls the market number): the pool sheet's number (`my_line`) and the
-   current market number (`mkt_line`), both **home-perspective**
-   (negative = home favored).
-2. `python3 pool.py` → ranked card, top 5 plus the bench.
-3. Submit, then log it: `python3 log_week.py submit <week> --picks A,B,C,D,E`
-   (writes `data/pool_picks_log.csv`).
-4. After results: `python3 log_week.py grade <week>`, then
-   `python3 pool_tracker.py report` (your picks vs the model's card).
+All lines are **home-perspective** (negative = home favored).
+
+1. `python3 update_mkt.py <week> --add` — adds the week's games to
+   `data/weekly_lines.xlsx` with the current market number (`mkt_line`)
+   from nflverse. Fill in the pool sheet's number (`my_line`) in Excel.
+   Re-run without `--add` to refresh `mkt_line`.
+2. `python3 fetch_splits.py 2026 <week> --to-workbook` — right before you
+   submit. Fills the opening line and Action Network bets % / money % into
+   the workbook. This is the only step that costs API credits.
+   Add `sharp_side` (`home`/`away`) by hand if a sharp report names one, and
+   `sharp_type`: `book` if a sportsbook reported it, `pro` if it is one
+   bettor's pick or one large bet.
+3. Copy the ELWAY projection table, then `pbpaste | python3 import_elway.py <week>`.
+   Saves the paste to `data/elway/` and fills `elway_line` / `elway_total` /
+   `elway_home_wp`. (`python3 import_elway.py <week>` re-imports the saved paste.)
+4. `python3 pool.py <week>` → ranked card, top 5 plus the bench, then the
+   ELWAY view: its lean on every game vs your line, flagged `agrees` /
+   `DISAGREES` against the card.
+   (`python3 sample_week.py <week>` shows the plain PLAY/lean/PASS view.)
+5. Submit, then log it: `python3 log_week.py submit <week> --picks A,B,C,D,E`.
+   This snapshots every game's lines, signals and ELWAY numbers into
+   `data/pool_picks_log.csv`, so the log shows what you knew when you picked.
+6. Optional: `python3 pool_tracker.py claude <week> A,B,C,D,E` logs Claude's
+   picks as a third card.
+7. After results: `python3 log_week.py grade <week>`, then
+   `python3 pool_tracker.py report`.
+
+**Editing the workbook in Excel:** click **Done**, never **Move to Trash**,
+if macOS says it "could not verify" the file. Excel's sandbox tags saved
+files with a quarantine flag, and that button deletes the file.
+
+## The report
+
+`python3 pool_tracker.py report` prints, in order:
+
+1. Your submitted picks, the model's card and Claude's picks, each with
+   record, win-rate CI, week by week, CLV and value tiers.
+2. A week-by-week comparison of the three cards.
+3. **ELWAY** — its record wherever its projection differs from your line
+   (and from the close), by size of gap, by week, and your picks with vs.
+   against it.
+4. **Market signals 2026** — every graded game, not just your picks — plus
+   how your picks did with vs. against the sharp side.
+5. **Market signals** for each past season (vs its pool line if one exists,
+   otherwise vs the market close), then all past seasons combined vs the
+   market close.
+
+Just the signal tables:
+`python3 pool_tracker.py report | sed -n '/MARKET SIGNALS/,$p'`
 
 ## Files
 
 | file | what it does |
 |---|---|
 | `pool.py` | **Main engine.** Ranks every game, returns the best 5, reports expected wins. |
-| `pool_tracker.py` | Weekly record, season standings vs baseline, CLV, tier calibration. |
+| `sample_week.py` | Loads a week from `weekly_lines.xlsx` (`load_games`) and scores it. |
+| `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
+| `import_elway.py` | Parses a pasted ELWAY projection table into the workbook (and the log, for submitted weeks). |
+| `fetch_splits.py` | Action Network splits via Apify; `import` copies saved splits in without an API call. |
+| `log_week.py` | Archive submission-time lines and signals; auto-grade from nflverse. |
+| `pool_tracker.py` | Your card vs the model's vs Claude's, CLV, tier calibration, market-signal records. |
 | `backtest.py` | The backtest the coefficients come from. |
 | `keynumbers.py` | Half-point value by what it crosses; push rates by number. |
 | `season_sim.py` | What the edge is worth over a season, with distributions. |
 | `pool_backtest_2025.py` | Real out-of-sample test on last year’s pool sheet. |
 | `rule_compare.py` | Selection-rule comparison and submission-time sensitivity. |
 | `lock_timing.py` | What the pool's lock rule costs. |
-| `log_week.py` | Archive submission-time lines; auto-grade from nflverse. |
 | `power_rating_test.py` | Why a projection model is not worth building. |
 | `model.py` | Original −110 betting version (has a vig hurdle; `pool.py` does not). |
+
+### Data files
+
+| file | contents |
+|---|---|
+| `data/weekly_lines.xlsx` | **The file you edit.** One row per 2026 game: `week, away, home, my_line, mkt_line`, plus signals `open_line, home_bets_pct, home_money_pct, sharp_side, sharp_type, signal_notes`. |
+| `data/pool_picks_log.csv` | Every game each week at submit time: your pick, the model's pick, signals, closing line, result. |
+| `data/claude_picks.csv` | Claude's picks (team only; graded from the log). |
+| `data/elway/` | Every ELWAY paste as received (`<season>_wk<NN>.txt`). |
+| `data/action_splits.csv` | Every Action Network pull (`an_*` columns); raw responses in `data/raw/action_network/`. |
+| `data/signals_<season>.csv` | Hand-collected sharp sides (`sharp_side`, `sharp_type`) and splits for a past season, sources in `signal_notes`. 2023–24: Fox Sports; 2025: VSiN, Yahoo, Fox, SBD. Optional. |
+| `data/pool_<season>_merged.csv` | A past season's pool sheet merged with results (2025 only). Seasons without one are graded at the market close. |
+| `data/archive/` | Retired: `tracker.py` (−110 bet tracker), `bet_log.csv`, `pool_log.csv`. |
 
 ## Two things a pool changes
 
@@ -272,12 +342,103 @@ whether this works.
 pool card went 2-3, but all five picks beat the closing number by an
 average of 0.8 points. Bad week, correct process. Judge the process.
 
+## ELWAY projections
+
+ELWAY publishes a projected home spread for each game. Wherever it differs
+from your line, it implies a side: the one your line undervalues. The
+report grades that side at your line and at the close, bucketed by the size
+of the gap. Started 2026 Week 3: **9-4 vs your lines, 8-4-1 vs the close**
+(CI 42–87%, one week).
+
+`pool.py` feeds ELWAY into the card through the existing projection tilt,
+at `ELWAY_WEIGHT = 0.5` (top of the `__main__` block). The tilt is capped at
+±2 percentage points, so it can reorder close calls but line value still
+decides the card. Set it to 0 to show ELWAY without letting it move picks;
+raise it only if the report's `gap 1+` row holds up over many weeks.
+
+A projection model's disagreements tend to be underdogs (10 of ELWAY's 13
+in Week 3), so watch whether it simply tracks underdog years.
+
+## Market signals (splits and sharp money)
+
+Each signal is graded on **every** game where it was recorded, not just on
+the five picks. A season is graded at its pool line when that year's sheet
+exists (`data/pool_<season>_merged.csv`: 2025, and 2026 via the log),
+otherwise at the nflverse closing line. The report also grades all past
+seasons together at the market close, the one common footing. As of 2026
+Week 3:
+
+At the market close, by season (2026 is at the pool line, weeks 1–3):
+
+| signal | 2023 | 2024 | 2025 | 2023–25 pooled | 2026 |
+|---|---|---|---|---|---|
+| sharp side | 2-6 | 25-34, 42% | 55-42, 57%* | 81-82, 50% [42, 57] | 17-8, 68% |
+| … reported by books | 1-1 | 4-10 | 53-41, 56%* | 57-52, 52% [43, 61] | 17-8 |
+| … one pro / one big bet | 1-5 | 21-24, 47% | 2-1 | 24-30, 44% [32, 58] | – |
+| money % ≥ 10 pts above tickets % | 55-58, 49% | 30-41, 42% | 62-39, 61% | 147-138, 52% [46, 57] | 13-15, 46% |
+| side with ≤ 35% of tickets | 33-39, 46% | 61-88, 41% | 82-51, 62% | 176-178, 50% [45, 55] | 14-7, 67% |
+| side the line moved toward | – | 119-129, 48% | 69-60, 53% | 188-189, 50% [45, 55] | 19-19, 50% |
+
+**Pooled over three seasons, the split signals are worth nothing (50–52%).**
+2025 was the outlier, not 2023–24. The seasons differ more than chance
+allows (chi-square p = 0.002 for the ≤35% signal), which is the signature
+of a regime-dependent pattern, not a stable edge:
+
+- The unpopular side is the underdog ~2/3 of the time, so it partly tracks
+  whether dogs had a good year. Dogs covered 53–56% every season 2019–22,
+  then only 47% in 2023 and 2024, and 52% in 2025.
+- Dog years don't explain all of it: the unpopular side as a *favorite*
+  also swung, from 16-29 in 2024 to 28-18 in 2025.
+- The 2025 split edge is the same at the market close as at the pool line,
+  so it was not the pool sheet's staleness in disguise.
+
+\* 2025's column is at the pool line; the pooled column is at the close.
+
+**The sharp side fails the same test.** Its 2025 result (56%) did not repeat:
+pooled over three seasons it is 81-82. Reports where a sportsbook said sharp
+money came in are 52% on 109 games; single pro-bettor picks (mostly Randy
+McKay via Fox) are 44%. Sharp sides are tagged in `sharp_type` (`book` /
+`pro`) so the two can be tracked separately going forward.
+
+Caveats: 2023 has only 8 sharp sides and 2024's are mostly one bettor's
+picks, because free sportsbook sharp reports for those years are largely
+gone (VSiN's pages 404; Yahoo's URLs now serve newer seasons). And every
+sharp side is second-hand and published near kickoff, after the line had
+already moved toward it — which is exactly why it should be worth ~50% at
+the close.
+
+**Conclusion: none of the market signals is an edge once graded against the
+market.** Line value against the pool sheet is. Keep recording the signals
+(cheap), but don't let them override line value.
+
+How the data was built, and why it is flattering:
+
+- **Splits and opening lines are Action Network for every game**, so every
+  week uses the same source. Where hand-collected values were replaced, the
+  old numbers are kept in `signal_notes` as `(was ...)`.
+- **Backfilled splits are final numbers**, not what you could see at submit
+  time. Only weeks fetched with `--to-workbook` before submitting are a
+  clean test.
+- **Sharp sides are second-hand** (Yahoo, VSiN, Fox) and cover 83 of 2025's
+  games and about half of each 2026 week. Where sources disagreed, the
+  sharp side is left blank.
+- **Action Network's opening lines** are sometimes the lookahead line, 2+
+  points from the game-week open (e.g. 2026 PHI @ CHI). That mostly affects
+  the line-movement signal.
+
+The thresholds are `SPLIT_GAP = 10` and `PUBLIC_MAX = 35` at the top of the
+signals section in `pool_tracker.py`.
+
 ## What could not be tested
 
-- **Betting splits (ticket % / handle %).** No free historical archive.
-  Forward-trackable only, never validated.
-- **Reported sharp entry points.** Same problem, and second-hand.
-- **Open-to-close movement.** nflverse archives only the close.
+- **Splits before 2023.** Action Network's archive thins out going back:
+  2023 has splits for 208 of 272 games and no opening lines.
+  To add a season: `python3 fetch_splits.py <season> 1-18` for splits
+  (2024+), optionally hand-collect sharp sides into
+  `data/signals_<season>.csv` (same columns as 2025's), and refresh
+  `data/games_clean.csv` if the season is newer than it. The report picks
+  up any season it finds; no code changes.
+- **Open-to-close movement before 2024.** nflverse archives only the close.
 - **Third-party projections.** The engine caps their influence at ±2
   percentage points and requires a credibility weight you supply. The
   source behind the MIA +11.5 pick was running 44% ATS on the season.
@@ -288,4 +449,12 @@ average of 0.8 points. Bad week, correct process. Judge the process.
 curl -sSL -o data/games_raw.csv \
   https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv
 python3 backtest.py && python3 keynumbers.py
+```
+
+Re-apply saved Action Network splits without an API call (empty cells
+only; `--overwrite` makes Action Network replace hand-entered values):
+
+```
+python3 fetch_splits.py import 2026
+python3 fetch_splits.py 2025 3 --from-raw    # re-parse a saved response
 ```

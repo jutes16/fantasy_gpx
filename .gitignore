@@ -21,3 +21,6 @@ nba/plots/
 .DS_Store
 *.tmp
 *.log
+
+# Paywalled ELWAY projection pastes (Silver Bulletin subscriber content)
+nfl_model/data/elway/

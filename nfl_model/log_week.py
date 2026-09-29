@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 from pool import best_five, score_game
+from sample_week import SIGNAL_COLS
 
 ARCHIVE = "data/pool_picks_log.csv"
 NFLVERSE = (
@@ -111,6 +112,8 @@ def submit(games, season, week, note="", picks=None):
             submitted=submitted, sub_pick=sub_pick, side=my_side,
             sub_pts_value=round(sub_val, 2) if my_side else np.nan,
             result="", model_result="", margin=np.nan, note=note,
+            # market signals at submit time (blank if not entered)
+            **{c: g.get(c, np.nan) for c in SIGNAL_COLS},
         ))
     df = pd.DataFrame(rows)
 
