@@ -1,0 +1,136 @@
+season,week,away,home,open_line,home_bets_pct,home_money_pct,sharp_side,sharp_type,signal_notes
+2025,1,TB,ATL,2.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,BAL,BUF,-1.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,MIN,CHI,-1.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,CIN,CLE,6.0,23.0,,home,book,VSiN (DraftKings)
+2025,1,TEN,DEN,-7.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,DET,GB,-1.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,MIA,IND,-1.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,CAR,JAX,-3.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,HOU,LA,-3.5,49.0,44.0,,,Sports Betting Dime (ATS handle)
+2025,1,KC,LAC,3.0,,,,,Sports Betting Dime (ATS handle)
+2025,1,LV,NE,-3.5,,31.0,,,Sports Betting Dime (ATS handle)
+2025,1,ARI,NO,3.5,,,,,Sports Betting Dime (ATS handle)
+2025,1,PIT,NYJ,2.5,30.0,,home,book,VSiN (DraftKings)
+2025,1,DAL,PHI,-7.0,,73.0,,,Sports Betting Dime (ATS handle)
+2025,1,SF,SEA,1.5,,37.0,,,Sports Betting Dime (ATS handle)
+2025,1,NYG,WAS,-7.5,63.0,52.0,away,book,VSiN (DraftKings)
+2025,2,CAR,ARI,,,,home,book,Yahoo sharp report
+2025,2,CLE,BAL,,,,home,book,Yahoo sharp report
+2025,2,JAX,CIN,-5.5,65.0,,away,book,VSiN (DraftKings); Yahoo sharp report
+2025,2,CHI,DET,,,,home,book,Yahoo sharp report
+2025,2,WAS,GB,,,,home,pro,Yahoo sharp report: single $240k bet
+2025,2,TB,HOU,,,,home,book,Yahoo sharp report
+2025,2,PHI,KC,-1.5,22.0,11.0,away,book,VSiN (Circa)
+2025,2,NE,MIA,,,,,,Yahoo sharp report: sources disagree
+2025,2,SF,NO,,,,home,book,Yahoo sharp report
+2025,2,BUF,NYJ,8.5,34.0,,home,book,VSiN (DraftKings)
+2025,2,SEA,PIT,,,,away,book,Yahoo sharp report
+2025,3,DET,BAL,,,,away,book,Yahoo sharp report
+2025,3,ATL,CAR,,,,away,book,Yahoo sharp report
+2025,3,GB,CLE,,,,home,book,Yahoo sharp report
+2025,3,DEN,LAC,-2.5,79.0,,away,book,VSiN (DraftKings)
+2025,3,CIN,MIN,,,,home,book,Yahoo sharp report
+2025,3,KC,NYG,6.0,27.0,,home,book,VSiN (DraftKings)
+2025,3,LA,PHI,-4.5,59.0,28.0,away,book,VSiN (DraftKings); Yahoo sharp report
+2025,3,NO,SEA,,,,away,book,Yahoo sharp report
+2025,3,ARI,SF,,,,home,book,Yahoo sharp report
+2025,3,IND,TEN,,,,away,book,Yahoo sharp report
+2025,4,WAS,ATL,,,,home,book,Yahoo sharp report
+2025,4,NO,BUF,,,,away,book,Yahoo sharp report
+2025,4,GB,DAL,,,,away,book,Yahoo sharp report
+2025,4,CIN,DEN,,,,home,book,Yahoo sharp report
+2025,4,CLE,DET,-10.5,67.0,45.0,,,VSiN (DraftKings); sources disagree on sharp side
+2025,4,IND,LA,-5.5,46.0,45.0,away,book,VSiN (DraftKings)
+2025,4,NYJ,MIA,,56.0,59.0,,,Yahoo (BetMGM)
+2025,4,MIN,PIT,-2.5,41.0,30.0,away,book,VSiN (DraftKings)
+2025,4,PHI,TB,,,,away,book,Yahoo sharp report
+2025,5,TEN,ARI,,,,home,book,Yahoo sharp report
+2025,5,HOU,BAL,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,5,NE,BUF,-10.5,46.0,11.0,away,book,VSiN (DraftKings) + Yahoo sharp report
+2025,5,MIA,CAR,,,,away,book,Yahoo sharp report
+2025,5,DET,CIN,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,5,MIN,CLE,4.5,60.0,89.0,home,book,VSiN (DraftKings)
+2025,5,LV,IND,,,,away,book,Yahoo sharp report
+2025,5,NYG,NO,,,,home,book,Yahoo sharp report
+2025,5,DEN,PHI,-4.5,71.0,,away,book,VSiN (DraftKings) + Yahoo sharp report
+2025,5,TB,SEA,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,6,BUF,ATL,,,,away,book,Yahoo sharp report
+2025,6,LA,BAL,,,,home,book,Yahoo sharp report
+2025,6,DAL,CAR,3.5,23.0,62.0,home,book,VSiN (DraftKings) + Yahoo sharp report
+2025,6,SEA,JAX,,,,away,book,Yahoo sharp report (moneyline)
+2025,6,DET,KC,-1.0,21.0,,home,book,VSiN (DraftKings) + Yahoo sharp report
+2025,6,LAC,MIA,5.5,31.0,57.0,home,book,VSiN (DraftKings) + Yahoo sharp report
+2025,6,NE,NO,,,,home,book,Yahoo sharp report
+2025,6,CLE,PIT,,,,home,book,Yahoo sharp report
+2025,6,SF,TB,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,7,NO,CHI,,,,away,book,Yahoo sharp report
+2025,7,MIA,CLE,-2.0,75.0,99.0,home,book,VSiN (Circa)
+2025,7,LA,JAX,3.5,62.0,87.0,home,book,VSiN (DraftKings)
+2025,7,LV,KC,,,,home,book,Yahoo sharp report
+2025,7,IND,LAC,-1.0,38.0,91.0,home,book,VSiN (Circa) + Yahoo sharp report
+2025,7,PHI,MIN,2.5,,,away,book,Yahoo sharp report
+2025,7,CAR,NYJ,,,,away,book,Yahoo sharp report
+2025,7,ATL,SF,-4.5,,,away,book,sharp-money search summary + Yahoo sharp report (open)
+2025,8,CHI,BAL,,,,home,book,Yahoo sharp report
+2025,8,BUF,CAR,7.5,21.0,,home,book,VSiN (DraftKings)
+2025,8,NYJ,CIN,,,,home,book,Yahoo sharp report
+2025,8,WAS,KC,,,,away,book,Yahoo sharp report
+2025,8,CLE,NE,,,,away,book,Yahoo sharp report
+2025,8,TB,NO,5.5,20.0,64.0,home,book,VSiN (DraftKings)
+2025,8,GB,PIT,3.0,61.0,70.0,home,book,VSiN (DraftKings) + Yahoo sharp report
+2025,9,KC,BUF,1.0,50.0,43.0,,,VSiN (DraftKings)
+2025,9,CHI,CIN,0.0,50.0,28.0,away,book,VSiN (DraftKings)
+2025,9,MIN,DET,-9.5,,,away,book,Fox Sports betting report
+2025,9,DEN,HOU,1.5,22.0,48.0,,,VSiN (DraftKings); Fox: late sharp money on DEN; sources disagree on sharp side
+2025,9,BAL,MIA,,,,home,pro,Fox Sports betting report (one pro bettor)
+2025,10,PHI,GB,-2.5,,,,,Yahoo sharp report
+2025,10,ATL,IND,-7.0,68.0,55.0,,,VSiN (DraftKings); Yahoo had sharps on IND; sources disagree on sharp side
+2025,10,PIT,LAC,-4.5,43.0,29.0,away,book,VSiN (DraftKings)
+2025,10,BAL,MIN,3.5,,,,,Yahoo sharp report
+2025,10,CLE,NYJ,-2.0,29.0,9.0,away,book,VSiN (DraftKings) + Yahoo sharp report
+2025,10,ARI,SEA,-6.0,,,home,book,Yahoo sharp report
+2025,10,LA,SF,3.0,,,,,Yahoo sharp report
+2025,10,NE,TB,-2.5,,,home,book,Yahoo sharp report
+2025,10,DET,WAS,3.0,,,away,book,Yahoo sharp report
+2025,11,TB,BUF,,,,home,book,Yahoo sharp report
+2025,11,BAL,CLE,,,,home,book,Yahoo sharp report
+2025,11,KC,DEN,3.5,,,away,book,Yahoo sharp report
+2025,11,LAC,JAX,,,,home,book,Yahoo sharp report
+2025,11,SEA,LA,-2.5,,,,,Yahoo sharp report
+2025,11,DAL,LV,,,,home,book,Yahoo sharp report
+2025,11,CHI,MIN,-2.5,,,home,book,Yahoo sharp report
+2025,11,GB,NYG,,,,home,book,Yahoo sharp report
+2025,11,DET,PHI,-1.5,,,home,book,Yahoo sharp report
+2025,12,JAX,ARI,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,12,PIT,CHI,,,,away,book,Yahoo sharp report
+2025,12,NE,CIN,,,,away,book,Yahoo sharp report
+2025,12,PHI,DAL,4.5,,,,,Yahoo sharp report
+2025,12,NYG,DET,,,,away,book,Yahoo sharp report
+2025,12,MIN,GB,-6.0,,,,,Yahoo sharp report
+2025,12,IND,KC,-3.5,,,away,book,Yahoo sharp report
+2025,12,CLE,LV,,,,away,book,Yahoo sharp report
+2025,12,ATL,NO,,,,away,book,Yahoo sharp report
+2025,12,CAR,SF,,,,home,book,Yahoo sharp report
+2025,13,CIN,BAL,-10.0,,,,,Fox Sports betting report (lookahead open)
+2025,13,KC,DAL,4.5,,,,,Fox Sports betting report
+2025,13,GB,DET,-3.0,,,away,book,Fox Sports betting report
+2025,13,CHI,PHI,-7.0,,,,,Fox Sports betting report
+2025,13,BUF,PIT,4.5,,,,,Fox Sports betting report
+2025,14,PIT,BAL,,,,away,book,Yahoo sharp report
+2025,14,CIN,BUF,-6.5,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,14,TEN,CLE,,,,,,Yahoo sharp report; sources disagree on sharp side
+2025,14,HOU,KC,,,,away,book,Yahoo sharp report
+2025,14,WAS,MIN,,,,away,book,Yahoo sharp report
+2025,14,MIA,NYJ,,,,away,book,Yahoo sharp report
+2025,15,CLE,CHI,,,,home,book,Yahoo sharp report
+2025,15,MIN,DAL,,,,away,book,Yahoo sharp report
+2025,15,NYJ,JAX,,,,home,book,Yahoo sharp report
+2025,15,LAC,KC,-5.5,,,away,book,Yahoo sharp report
+2025,15,DET,LA,-4.5,,,home,book,Yahoo sharp report
+2025,15,BUF,NE,1.5,,,away,book,Yahoo sharp report
+2025,16,NE,BAL,-2.5,,,,,Fox Sports betting report
+2025,16,GB,CHI,2.5,,,home,book,Fox Sports betting report
+2025,16,JAX,DEN,-2.5,,,,,Fox Sports betting report
+2025,16,LA,SEA,-1.0,,,home,book,Fox Sports betting report / search summary
+2025,16,KC,TEN,,,,home,pro,Fox Sports betting report (one pro bettor)

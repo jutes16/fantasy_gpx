@@ -21,7 +21,8 @@ game better than the field". It is "spot which of the shared numbers
 has gone stale versus the live market". Different question, and the
 only one with a measured edge behind it.
 
-    python3 pool.py          -> scores the sample week in sample_week.py
+    python3 pool.py          -> scores the latest week in data/weekly_lines.xlsx
+    python3 pool.py 3        -> a specific week
 """
 
 import numpy as np
@@ -231,10 +232,49 @@ def fmt(res: dict, show_bench: bool = True) -> str:
     return "\n".join(L)
 
 
+# ELWAY (import_elway.py) feeds the projection tilt in score_game. The tilt is
+# capped at +/-2 pp whatever the weight, so line value still drives the card.
+# 0 = show ELWAY but ignore it; 1 = full tilt. Raise it only if the ELWAY
+# section of pool_tracker.py report earns it (gap 1+ row, many weeks).
+ELWAY_WEIGHT = 0.5
+
+
+def elway_view(games, res):
+    """ELWAY's lean on every game vs your line, flagged against the card."""
+    rows = [g for g in games if g.get("elway_line") is not None]
+    if not rows:
+        return ""
+    card = {r["game"]: r["side"] for r in res["card"]}
+    L = [f"\nELWAY view (weight {ELWAY_WEIGHT:g}; projection vs your line)",
+         f"{'GAME':<13} {'YOUR LINE':>9} {'ELWAY':>7} {'GAP':>5}  {'ELWAY SIDE':<12} CARD"]
+    for g in sorted(rows, key=lambda g: -abs(g["elway_line"] - g["my_line"])):
+        lbl = f"{g['away']} @ {g['home']}"
+        gap = g["elway_line"] - g["my_line"]
+        if gap == 0:
+            lean, note = "no lean", ""
+        else:
+            side = "home" if gap < 0 else "away"
+            team = g["home"] if side == "home" else g["away"]
+            num = g["my_line"] if side == "home" else -g["my_line"]
+            lean = f"{team} {num:+g}"
+            note = ("agrees" if card.get(lbl) == side else
+                    "DISAGREES" if lbl in card else "")
+        L.append(f"{lbl:<13} {g['my_line']:>+9g} {g['elway_line']:>+7g} "
+                 f"{abs(gap):>5g}  {lean:<12} {note}")
+    return "\n".join(L)
+
+
 if __name__ == "__main__":
-    from sample_week import games
+    import sys
+    from sample_week import load_games
+    games = load_games(int(sys.argv[1]) if len(sys.argv) > 1 else None)
+    for g in games:
+        if g.get("elway_line") is not None:
+            g["proj_margin"] = -float(g["elway_line"])   # home margin
+            g["proj_weight"] = ELWAY_WEIGHT
     res = best_five(games)
     print(fmt(res))
+    print(elway_view(games, res))
 
     warn = thursday_check(res)
     if warn:
