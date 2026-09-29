@@ -1,0 +1,33 @@
+season,week,submitted_at,game,away,home,pool_line,mkt_line_at_submit,closing_line,model_pick,model_side,on_model_card,pts_value_at_submit,win_rate,tier,submitted,sub_pick,side,sub_pts_value,result,model_result,margin,note
+2026,2,2026-09-29T13:40:30+00:00,DET @ BUF,DET,BUF,-5.5,-5.5,-5.5,BUF -5.5,home,False,0.0,0.5,coin flip,False,,,,L,W,10.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,CAR @ ATL,CAR,ATL,2.5,2.5,2.5,ATL +2.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-31.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,NO @ BAL,NO,BAL,-7.5,-8.5,-8.5,BAL -7.5,home,False,1.0,0.5378,EDGE,False,,,,W,L,-7.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,MIN @ CHI,MIN,CHI,-5.5,-4.5,-4.5,MIN +5.5,away,True,1.0,0.5451,EDGE,False,,,,W,W,-6.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,CIN @ HOU,CIN,HOU,-2.5,-3.0,-3.0,HOU -2.5,home,False,0.5,0.5339,slim,True,HOU -2.5,home,0.5,L,L,-14.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,PIT @ NE,PIT,NE,-5.5,-4.5,-4.5,PIT +5.5,away,True,1.0,0.5451,EDGE,False,,,,L,L,17.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,GB @ NYJ,GB,NYJ,4.5,3.5,3.5,NYJ +4.5,home,True,1.0,0.5451,EDGE,True,NYJ +4.5,home,1.0,W,W,-3.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,CLE @ TB,CLE,TB,-8.5,-8.5,-8.5,TB -8.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-4.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,PHI @ TEN,PHI,TEN,7.5,7.0,7.0,TEN +7.5,home,False,0.5,0.5319,slim,True,TEN +7.5,home,0.5,W,W,-4.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,JAX @ DEN,JAX,DEN,-2.5,-2.5,-2.5,DEN -2.5,home,False,0.0,0.5,coin flip,False,,,,L,W,7.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,LV @ LAC,LV,LAC,-6.5,-6.5,-6.5,LAC -6.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-12.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,SEA @ ARI,SEA,ARI,3.5,3.5,3.5,ARI +3.5,home,False,0.0,0.5,coin flip,True,ARI +3.5,home,0.0,L,L,-24.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,WAS @ DAL,WAS,DAL,-4.5,-3.5,-3.5,WAS +4.5,away,True,1.0,0.5451,EDGE,False,,,,L,L,17.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,MIA @ SF,MIA,SF,-13.5,-12.5,-12.5,MIA +13.5,away,False,1.0,0.5329,EDGE,False,,,,L,L,22.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,IND @ KC,IND,KC,-6.5,-6.0,-6.0,IND +6.5,away,False,0.5,0.5248,slim,True,IND +6.5,away,0.5,W,W,3.0,closing line value
+2026,2,2026-09-29T13:40:30+00:00,NYG @ LAR,NYG,LAR,-7.5,-6.5,-6.5,NYG +7.5,away,True,1.0,0.5576,EDGE,False,,,,L,L,22.0,closing line value
+2026,1,2026-09-29T13:42:07+00:00,NE @ SEA,NE,SEA,-2.5,-3.0,-3.0,SEA -2.5,home,True,0.5,0.5339,slim,False,,,,L,W,3.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,SF @ LAR,SF,LAR,-3.5,-3.5,-3.5,LAR -3.5,home,False,0.0,0.5,coin flip,True,SF +3.5,away,0.0,W,L,-20.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,CHI @ CAR,CHI,CAR,3.5,3.0,3.0,CAR +3.5,home,True,0.5,0.5339,slim,True,CHI -3.5,away,-0.5,W,L,-22.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,TB @ CIN,TB,CIN,-3.5,-3.5,-3.5,CIN -3.5,home,False,0.0,0.5,coin flip,False,,,,L,W,6.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,NO @ DET,NO,DET,-6.5,-7.0,-7.0,DET -6.5,home,False,0.5,0.5319,slim,False,,,,W,L,1.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,BUF @ HOU,BUF,HOU,1.5,1.5,1.5,HOU +1.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-5.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,BAL @ IND,BAL,IND,3.5,3.0,3.0,IND +3.5,home,True,0.5,0.5339,slim,True,IND +3.5,home,0.5,L,L,-18.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,CLE @ JAX,CLE,JAX,-8.5,-8.5,-8.5,JAX -8.5,home,False,0.0,0.5,coin flip,False,,,,L,W,24.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,ATL @ PIT,ATL,PIT,-6.5,-6.5,-6.5,PIT -6.5,home,False,0.0,0.5,coin flip,True,PIT -6.5,home,0.0,W,W,7.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,NYJ @ TEN,NYJ,TEN,-1.5,-1.5,-1.5,TEN -1.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-13.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,ARI @ LAC,ARI,LAC,-8.5,-8.5,-8.5,LAC -8.5,home,False,0.0,0.5,coin flip,False,,,,W,L,-12.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,MIA @ LV,MIA,LV,-3.5,-3.0,-3.0,MIA +3.5,away,True,0.5,0.5339,slim,False,,,,L,L,14.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,GB @ MIN,GB,MIN,-1.5,-1.5,-1.5,MIN -1.5,home,False,0.0,0.5,coin flip,True,MIN -1.5,home,0.0,W,W,17.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,WAS @ PHI,WAS,PHI,-6.5,-6.0,-6.0,WAS +6.5,away,False,0.5,0.5248,slim,False,,,,W,W,2.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,DAL @ NYG,DAL,NYG,3.5,3.0,3.0,NYG +3.5,home,True,0.5,0.5339,slim,False,,,,L,W,8.0,my_lines may not be accurate
+2026,1,2026-09-29T13:42:07+00:00,DEN @ KC,DEN,KC,-2.5,-2.5,-2.5,KC -2.5,home,False,0.0,0.5,coin flip,False,,,,L,W,21.0,my_lines may not be accurate

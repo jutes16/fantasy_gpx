@@ -1,32 +1,43 @@
 """
-Example: score a week. Lines are HOME-perspective (negative = home favored).
+Score a week from data/weekly_lines.csv. Lines are HOME-perspective
+(negative = home favored).
 
-Replace `games` each week with your sheet's numbers (my_line) and the
-current market (mkt_line), then run:  python3 sample_week.py
+The CSV tracks the whole season: columns week, away, home, my_line, mkt_line.
+Append each week's games to it, then run:
+
+    python3 sample_week.py          # latest week in the file
+    python3 sample_week.py 3        # a specific week
 """
+
+import os
+import sys
+
+import pandas as pd
 
 from model import score_week, fmt
 
-# Week 3 2026, as a check against what was actually played.
-games = [
-    dict(away="KC",  home="MIA", my_line=11.5, mkt_line=10.5),
-    dict(away="BAL", home="DAL", my_line=2.5,  mkt_line=3.5),
-    dict(away="CIN", home="PIT", my_line=3.5,  mkt_line=3.5),
-    dict(away="TEN", home="NYG", my_line=-3.5, mkt_line=-2.5),
-    dict(away="LAR", home="DEN", my_line=2.5,  mkt_line=2.5),
-    dict(away="SEA", home="WAS", my_line=7.5,  mkt_line=7.5),
-    dict(away="HOU", home="IND", my_line=2.5,  mkt_line=1.5),
-    dict(away="CAR", home="CLE", my_line=2.5,  mkt_line=2.5),
-    dict(away="NE",  home="JAX", my_line=-3.5, mkt_line=-3.0),
-    dict(away="ARI", home="SF",  my_line=-8.5, mkt_line=-8.5),
-    dict(away="LV",  home="NO",  my_line=-3.5, mkt_line=-3.0),
-    dict(away="NYJ", home="DET", my_line=-6.5, mkt_line=-6.5),
-    dict(away="LAC", home="BUF", my_line=-7.5, mkt_line=-7.0),
-    dict(away="MIN", home="TB",  my_line=1.5,  mkt_line=1.5),
-]
+LINES_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "data", "weekly_lines.csv")
+
+
+def load_games(week=None, path=LINES_CSV):
+    """Games for `week` (default: latest week in the file) as score_week dicts."""
+    df = pd.read_csv(path)
+    if week is None:
+        week = int(df["week"].max())
+    df = df[(df["week"] == week) & df["my_line"].notna()]  # skip games with no line of mine
+    if df.empty:
+        raise ValueError(f"no games for week {week} in {path}")
+    return [
+        dict(away=r.away, home=r.home, my_line=float(r.my_line),
+             mkt_line=float(r.mkt_line))
+        for r in df.itertuples()
+    ]
+
 
 if __name__ == "__main__":
-    rows = score_week(games)
+    wk = int(sys.argv[1]) if len(sys.argv) > 1 else None
+    rows = score_week(load_games(wk))
     print(fmt(rows))
     plays = [r for r in rows if r["verdict"] == "PLAY"]
     leans = [r for r in rows if r["verdict"] == "lean"]

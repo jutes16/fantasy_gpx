@@ -53,6 +53,34 @@ games carry real value, so slots 4 and 5 are coin flips. The engine
 labels them `coin flip` rather than inventing a reason.
 
 
+
+## Overriding the model
+
+`pool.py` proposes; you submit. To record picks that differ from the card,
+name the TEAMS you actually took (naming a team fixes the game *and* the
+side, so you can take the opposite side from the model):
+
+```
+python3 log_week.py submit 4 --picks TEN,BAL,MIA,PIT,DEN
+python3 log_week.py submit 4 --picks NYG,BAL,MIA,PIT,DEN --note "why"
+```
+
+It prints what you dropped, added or flipped, and what the override costs
+in the model's own terms:
+
+```
+  dropped  NE +3.5       (53.4%)
+  added    PIT +3.5      (model had this at +0.0 pts of value)
+  model expected wins : 2.71
+  your expected wins  : 2.64   (-0.07)
+```
+
+Both cards are stored and graded separately, so `log_week.py overrides`
+can later answer whether your judgement actually beats the model. That
+needs ~100 override picks to mean anything; until then it is a log, not a
+verdict. Recording the override honestly is what keeps the calibration
+data usable, so never log a pick you did not send.
+
 ## The lock rule (this pool)
 
 Picks lock at the **first game you select**. Take a Thursday game and all
