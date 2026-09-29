@@ -4,5 +4,5 @@ pandas>=2.0
 numpy>=1.24
 scipy>=1.10
 scikit-learn>=1.3
-# optional: only needed to read .xlsx inputs
-# openpyxl>=3.1
+# weekly lines are kept in data/weekly_lines.xlsx
+openpyxl>=3.1

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-LOG = "data/bet_log.csv"
+LOG = "data/archive/bet_log.csv"
 BREAKEVEN = 0.5238
 
 COLUMNS = [

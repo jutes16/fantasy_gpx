@@ -18,12 +18,15 @@ anyone else in the pool.
 
 ## Weekly workflow
 
-1. Put the week's games in `sample_week.py`: the pool sheet's number
-   (`my_line`) and the current market number (`mkt_line`), both
-   **home-perspective** (negative = home favored).
+1. Add the week's games to `data/weekly_lines.xlsx` (`python3 update_mkt.py <week> --add`
+   pulls the market number): the pool sheet's number (`my_line`) and the
+   current market number (`mkt_line`), both **home-perspective**
+   (negative = home favored).
 2. `python3 pool.py` → ranked card, top 5 plus the bench.
-3. Submit. Log the 5 in `data/pool_log.csv`.
-4. After results: `python3 pool_tracker.py report`.
+3. Submit, then log it: `python3 log_week.py submit <week> --picks A,B,C,D,E`
+   (writes `data/pool_picks_log.csv`).
+4. After results: `python3 log_week.py grade <week>`, then
+   `python3 pool_tracker.py report` (your picks vs the model's card).
 
 ## Files
 

@@ -30,7 +30,7 @@ import pandas as pd
 
 from pool import best_five, score_game
 
-ARCHIVE = "data/submissions.csv"
+ARCHIVE = "data/pool_picks_log.csv"
 NFLVERSE = (
     "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 )
