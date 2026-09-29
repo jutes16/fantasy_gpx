@@ -1,0 +1,253 @@
+"""
+Pool pick engine: pick the best 5 against a fixed weekly sheet.
+
+Pool assumptions (set from how your pool actually works):
+  - straight wins, all 5 picks equal
+  - the sheet is fixed and identical for everyone
+  - season-long standings
+
+Two consequences that change the math versus real betting:
+
+  1. NO VIG. Breakeven is 50%, not 52.38%. A half point of line value
+     is worth playing here; at -110 it is not. The engine is therefore
+     more permissive than model.py.
+
+  2. YOU MUST SUBMIT 5. There is no PASS. Some weeks only two or three
+     games carry real value, so slots 4 and 5 are coin flips. The engine
+     labels them honestly rather than dressing them up.
+
+Because the sheet is shared and fixed, the edge is not "handicap the
+game better than the field". It is "spot which of the shared numbers
+has gone stale versus the live market". Different question, and the
+only one with a measured edge behind it.
+
+    python3 pool.py          -> scores the sample week in sample_week.py
+"""
+
+import numpy as np
+
+POOL_BREAKEVEN = 0.50   # no vig in a pool
+COINFLIP_BAND = 0.25    # |value| below this is not a real edge
+
+# Backtested ATS win rate by points of line value held vs the closing
+# number. From backtest.py, 5,790 bet sides, 2015-2025.
+VALUE_CURVE = {
+    0.0: 0.5000, 0.5: 0.5248, 1.0: 0.5451,
+    1.5: 0.5629, 2.0: 0.5793, 2.5: 0.5948, 3.0: 0.6101,
+}
+
+
+def band_multiplier(abs_line: float) -> float:
+    """
+    How much a point of value is worth given where the spread sits.
+    From backtest.py table [2].
+    """
+    a = abs(abs_line)
+    if a < 2.5:
+        return 0.40   # 51.8% at 1pt: a point buys almost nothing here
+    if a < 3.5:
+        return 1.45   # 56.5%: best band, the 3 is doing the work
+    if a < 6.5:
+        return 1.00   # 54.3%
+    if a < 7.5:
+        return 1.35   # 56.1%
+    if a < 10.5:
+        return 0.82   # 53.7%
+    return 0.70       # 53.1%
+
+
+def _interp(pts: float) -> float:
+    xs = sorted(VALUE_CURVE)
+    ys = [VALUE_CURVE[x] for x in xs]
+    r = float(np.interp(abs(pts), xs, ys))
+    return 1.0 - r if pts < 0 else r
+
+
+def score_game(g: dict) -> dict:
+    """Score one game. Lines are HOME-perspective (negative = home favored)."""
+    my, mkt = float(g["my_line"]), float(g["mkt_line"])
+
+    v_home = my - mkt          # value if you take the home side
+    v_away = mkt - my          # value if you take the away side
+    side = "home" if v_home >= v_away else "away"
+    raw = max(v_home, v_away)
+
+    mult = band_multiplier(mkt)
+    eff = raw * mult
+    rate = _interp(eff)
+
+    # Optional projection tilt. Capped hard: projections are NOT
+    # validated by the backtest, and pass a credibility weight in
+    # proj_weight (a source running 44% ATS should get ~0).
+    pm, pw = g.get("proj_margin"), g.get("proj_weight", 0.0)
+    if pm is not None and pw:
+        pcov = (pm + my) if side == "home" else (-pm - my)
+        rate += float(np.clip(pcov * 0.004 * pw, -0.02, 0.02))
+
+    rate = float(np.clip(rate, 0.30, 0.70))
+    team = g["home"] if side == "home" else g["away"]
+    num = my if side == "home" else -my
+
+    if raw >= 1.0:
+        tier = "EDGE"
+    elif raw >= 0.5:
+        tier = "slim"
+    elif raw > -COINFLIP_BAND:
+        tier = "coin flip"
+    else:
+        tier = "AVOID"      # your number is worse than market
+
+    return dict(
+        game=f"{g['away']} @ {g['home']}",
+        pick=f"{team} {num:+g}",
+        side=side,
+        my_line=my, mkt_line=mkt,
+        pts_value=round(raw, 2),
+        band_mult=mult,
+        eff_pts=round(eff, 2),
+        win_rate=round(rate, 4),
+        tier=tier,
+        is_thursday=bool(g.get("is_thursday", False)),
+    )
+
+
+def rank_alternatives(games: list, n: int = 5) -> dict:
+    """
+    Three defensible ways to pick the 5. Reported side by side because
+    on 2025's real pool sheet they disagreed and the "best" one was
+    almost certainly noise:
+
+        model (band-weighted)   56/90  62.2%
+        raw line value only     58/90  64.4%
+        value, tiebreak near 3  61/90  67.8%
+
+    All three CIs overlap heavily. The band-weighted rule is kept as
+    the default because it has 2,895 games behind it, not 90. Log all
+    three weekly and revisit after a few seasons of real data.
+    """
+    scored = [score_game(g) for g in games]
+    out = {}
+    out["model"] = sorted(scored, key=lambda r: -r["win_rate"])[:n]
+    out["raw_value"] = sorted(scored, key=lambda r: -r["pts_value"])[:n]
+    out["value_near3"] = sorted(
+        scored,
+        key=lambda r: (-r["pts_value"], -(2.5 <= abs(r["mkt_line"]) <= 3.5)),
+    )[:n]
+    return out
+
+
+def best_five(games: list, n: int = 5) -> dict:
+    """
+    Rank every game and take the top n. Objective is expected wins,
+    which for straight-wins scoring is just the sum of win rates.
+    """
+    scored = sorted((score_game(g) for g in games), key=lambda r: -r["win_rate"])
+    card = scored[:n]
+    exp_wins = sum(r["win_rate"] for r in card)
+    baseline = 0.5 * n
+    return dict(
+        card=card,
+        bench=scored[n:],
+        expected_wins=round(exp_wins, 3),
+        baseline=baseline,
+        edge_wins=round(exp_wins - baseline, 3),
+        real_edges=sum(1 for r in card if r["tier"] == "EDGE"),
+        coin_flips=sum(1 for r in card if r["tier"] in ("coin flip", "AVOID")),
+    )
+
+
+# Cost of locking all five picks early, measured on 2025's sheet
+# (lock_timing.py): ~1.2 wins a season, ~0.07 wins a week, because the
+# other four picks get made against a market line ~3 days stale.
+THURSDAY_LOCK_COST = 0.07
+
+
+def thursday_check(res: dict) -> str | None:
+    """
+    This pool locks every pick at the first game selected. Take a Thursday
+    game and the other four lock three days early, against a staler market
+    line. Worth it only if the Thursday game clears the pick it displaces
+    by more than the lock costs.
+    """
+    card = res["card"]
+    thu = [r for r in card if r.get("is_thursday")]
+    if not thu:
+        return None
+
+    bench = res["bench"]
+    best_thu = max(thu, key=lambda r: r["win_rate"])
+    # what you would play instead: worst non-Thursday pick on the card,
+    # promoted from the best non-Thursday game on the bench
+    non_thu = [r for r in card if not r.get("is_thursday")]
+    repl = next((r for r in bench if not r.get("is_thursday")), None)
+    if repl is None or not non_thu:
+        return None
+    displaced = min(non_thu, key=lambda r: r["win_rate"])
+
+    gain = best_thu["win_rate"] - repl["win_rate"]
+    net = gain - THURSDAY_LOCK_COST
+
+    L = ["", "THURSDAY LOCK WARNING"]
+    L.append(f"  {best_thu['pick']} is a Thursday game. Taking it locks all")
+    L.append(f"  five picks ~3 days early.")
+    L.append(f"    edge over next bench option ({repl['pick']}): {gain*100:+.1f} pp")
+    L.append(f"    cost of locking the other four:              {-THURSDAY_LOCK_COST*100:.1f} pp")
+    L.append(f"    net:                                         {net*100:+.1f} pp")
+    if net > 0:
+        L.append("  -> worth taking.")
+    else:
+        L.append(f"  -> NOT worth it. Drop it, promote {repl['pick']},")
+        L.append("     and lock Sunday 1pm instead.")
+    return "\n".join(L)
+
+
+def fmt(res: dict, show_bench: bool = True) -> str:
+    L = []
+    L.append("=" * 68)
+    L.append("POOL CARD — best 5")
+    L.append("=" * 68)
+    hdr = f"{'#':<3}{'GAME':<14}{'PICK':<13}{'VAL':>6}{'WIN%':>8}   TIER"
+    L.append(hdr)
+    L.append("-" * len(hdr))
+    for i, r in enumerate(res["card"], 1):
+        L.append(
+            f"{i:<3}{r['game']:<14}{r['pick']:<13}{r['pts_value']:>+6.1f}"
+            f"{r['win_rate']*100:>7.1f}%   {r['tier']}"
+        )
+    L.append("")
+    L.append(f"expected wins: {res['expected_wins']:.2f} of 5")
+    L.append(f"coin-flip baseline: {res['baseline']:.2f}")
+    L.append(f"edge: {res['edge_wins']:+.2f} wins this week")
+    L.append(f"real edges on the card: {res['real_edges']}   coin flips: {res['coin_flips']}")
+
+    if show_bench and res["bench"]:
+        L.append("")
+        L.append("not on the card:")
+        for r in res["bench"]:
+            L.append(
+                f"    {r['game']:<14}{r['pick']:<13}{r['pts_value']:>+6.1f}"
+                f"{r['win_rate']*100:>7.1f}%   {r['tier']}"
+            )
+    return "\n".join(L)
+
+
+if __name__ == "__main__":
+    from sample_week import games
+    res = best_five(games)
+    print(fmt(res))
+
+    warn = thursday_check(res)
+    if warn:
+        print(warn)
+
+    alts = rank_alternatives(games)
+    base = {r["pick"] for r in alts["model"]}
+    disagree = {k: [r["pick"] for r in v if r["pick"] not in base]
+                for k, v in alts.items() if k != "model"}
+    if any(disagree.values()):
+        print("\nalternate rules would swap in:")
+        for k, picks in disagree.items():
+            if picks:
+                print(f"  {k:<13} {', '.join(picks)}")
+        print("  (all three rules are within noise of each other on 90 picks;")
+        print("   the default is the one with the most games behind it)")

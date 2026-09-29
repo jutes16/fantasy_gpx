@@ -61,7 +61,18 @@ games_raw <- readr::read_csv(games_csv_path, show_col_types = FALSE) %>%
 # Normalize team names and calculate winner from scores
 games <- games_raw %>%
   dplyr::mutate(
-    week = as.integer(readr::parse_number(as.character(week))),
+    # Keep week as character to handle playoff weeks (Week_WC_PO, Week_DV_PO, etc.)
+    week_raw = as.character(week),
+    # Create a sortable week number for ordering
+    # Regular season: extract number (1-18)
+    # Playoffs: assign sequential numbers (19 for WC_PO, 20 for DV_PO, etc.)
+    week_num = dplyr::case_when(
+      stringr::str_detect(week_raw, "WC_PO") ~ 19,
+      stringr::str_detect(week_raw, "DV_PO") ~ 20,
+      stringr::str_detect(week_raw, "Champ_PO") ~ 21,
+      stringr::str_detect(week_raw, "SB") ~ 22,
+      TRUE ~ suppressWarnings(as.numeric(readr::parse_number(week_raw)))
+    ),
     away = normalize_nfl_abbr(stringr::str_to_upper(away)),
     home = normalize_nfl_abbr(stringr::str_to_upper(home)),
     spread_winner = normalize_nfl_abbr(stringr::str_to_upper(spread_winner)),
@@ -75,42 +86,48 @@ games <- games_raw %>%
     # Convert to a consistent "spread" value
     spread = abs(home_spread)
   ) %>%
-  dplyr::filter(!is.na(week), !is.na(away), !is.na(home)) %>%
-  dplyr::arrange(week)
+  dplyr::filter(!is.na(week_num), !is.na(away), !is.na(home)) %>%
+  dplyr::arrange(week_num)
 
 # ---- Create long format with team perspective ----
 # Each game becomes two rows: one for each team
 games_long <- games %>%
   # Away team perspective
   dplyr::transmute(
-    week, team = away, opponent = home,
+    week_num, week_raw, team = away, opponent = home,
     location = "away",
     # Away team is favorite when home_spread is positive
     is_favorite = home_spread > 0,
     spread_size = abs(home_spread),
     won_game = (winner == team),
-    won_ats = (spread_winner == team)
+    won_ats = (spread_winner == team),
+    # Calculate ATS margin (positive = beat spread, negative = missed spread)
+    # Away team: (away_score + spread) - home_score
+    ats_margin = (score_away + home_spread) - score_home
   ) %>%
   dplyr::bind_rows(
     # Home team perspective
     games %>%
       dplyr::transmute(
-        week, team = home, opponent = away,
+        week_num, week_raw, team = home, opponent = away,
         location = "home",
         # Home team is favorite when home_spread is negative
         is_favorite = home_spread < 0,
         spread_size = abs(home_spread),
         won_game = (winner == team),
-        won_ats = (spread_winner == team)
+        won_ats = (spread_winner == team),
+        # Calculate ATS margin (positive = beat spread, negative = missed spread)
+        # Home team: (home_score - home_spread) - away_score
+        ats_margin = (score_home - home_spread) - score_away
       )
   ) %>%
-  dplyr::arrange(team, week) %>%
+  dplyr::arrange(team, week_num) %>%
   dplyr::filter(!is.na(team))
 
 # ---- Calculate previous game outcomes ----
 situational <- games_long %>%
   dplyr::group_by(team) %>%
-  dplyr::arrange(week) %>%
+  dplyr::arrange(week_num) %>%
   dplyr::mutate(
     # Previous week outcomes
     prev_won_game = dplyr::lag(won_game),
@@ -244,7 +261,7 @@ ats_by_margin_and_result <- situational %>%
 # ---- Analysis 4: Scatter plot of previous spread vs current spread ----
 # Create binned categories for spreads (signed, so we know favorite/underdog)
 scatter_data <- situational %>%
-  dplyr::anti_join(situational, by = c("week", "team")) %>%
+  dplyr::anti_join(situational, by = c("week_num", "team")) %>%
   dplyr::filter(!is.na(prev_spread_size), !is.na(spread_size), !is.na(won_ats)) %>%
   dplyr::mutate(
     # Convert spreads to signed values (negative = favorite, positive = underdog)
@@ -596,19 +613,43 @@ print(ats_by_margin_and_result)
 
 cat("\n=== Additional Insights ===\n")
 cat("Total games analyzed:", nrow(situational), "\n")
-cat("Weeks covered:", min(situational$week), "to", max(situational$week), "\n")
+# Get min and max week labels
+min_week_label <- situational %>%
+  dplyr::filter(week_num == min(week_num)) %>%
+  dplyr::pull(week_raw) %>%
+  unique() %>%
+  first()
+max_week_label <- situational %>%
+  dplyr::filter(week_num == max(week_num)) %>%
+  dplyr::pull(week_raw) %>%
+  unique() %>%
+  first()
+cat("Weeks covered:", min_week_label, "to", max_week_label, "\n")
 
 # ---- Current Week Teams Coming Off ATS Loss ----
 cat("\n=== TEAMS COMING OFF ATS LOSS ===\n\n")
 
 # Find the most recent completed week and next week
-max_completed_week <- max(games_long$week[!is.na(games_long$won_ats)], na.rm = TRUE)
-next_week <- max_completed_week
+max_completed_week_num <- max(games_long$week_num[!is.na(games_long$won_ats)], na.rm = TRUE)
+next_week_num <- max_completed_week_num + 1
+
+# Get the week labels for display
+max_completed_week_label <- games_long %>%
+  dplyr::filter(week_num == max_completed_week_num) %>%
+  dplyr::pull(week_raw) %>%
+  unique() %>%
+  first()
+
+next_week_label <- games %>%
+  dplyr::filter(week_num == next_week_num) %>%
+  dplyr::pull(week_raw) %>%
+  unique() %>%
+  first()
 
 games_to_include <- situational %>%
   dplyr::inner_join(
-    situational %>% dplyr::select(week, team, opponent, coming_off_ats_loss),
-    by = c("week" = "week", "team" = "opponent", "opponent" = "team")
+    situational %>% dplyr::select(week_num, team, opponent, coming_off_ats_loss),
+    by = c("week_num" = "week_num", "team" = "opponent", "opponent" = "team")
   ) %>%
   dplyr::filter(
     (coming_off_ats_loss.x == TRUE & coming_off_ats_loss.y == FALSE) |
@@ -617,11 +658,11 @@ games_to_include <- situational %>%
   dplyr::distinct()
 
 current_week_ats_losers <- games_to_include %>%
-  dplyr::filter(week == next_week, coming_off_ats_loss.x == TRUE) %>%
+  dplyr::filter(week_num == next_week_num, coming_off_ats_loss.x == TRUE) %>%
   dplyr::arrange(team)
 
 if (nrow(current_week_ats_losers) > 0) {
-  cat("Teams playing in Week", next_week, "coming off an ATS loss:\n\n")
+  cat("Teams playing in", next_week_label, "coming off an ATS loss:\n\n")
   current_week_ats_losers %>%
     dplyr::mutate(
       matchup = ifelse(location == "home",
@@ -640,22 +681,22 @@ if (nrow(current_week_ats_losers) > 0) {
     print(row.names = FALSE)
 
   cat("\nTotal teams:", nrow(current_week_ats_losers), "\n")
-  cat("Week", next_week, "games (coming off Week", max_completed_week, ")\n")
+  cat(next_week_label, "games (coming off", max_completed_week_label, ")\n")
 } else {
-  cat("No Week", next_week, "data available or no teams coming off ATS loss.\n")
-  cat("Most recent completed week:", max_completed_week, "\n")
+  cat("No", next_week_label, "data available or no teams coming off ATS loss.\n")
+  cat("Most recent completed week:", max_completed_week_label, "\n")
 }
 
 # ---- All Current Week Lines ----
-cat("\n=== ALL WEEK", next_week, "LINES ===\n\n")
+cat("\n=== ALL", toupper(next_week_label), "LINES ===\n\n")
 
 # Get all games for the current week
 current_week_games <- games %>%
-  dplyr::filter(week == next_week) %>%
+  dplyr::filter(week_num == next_week_num) %>%
   dplyr::arrange(away, home)
 
 if (nrow(current_week_games) > 0) {
-  cat("All games scheduled for Week", next_week, ":\n\n")
+  cat("All games scheduled for", next_week_label, ":\n\n")
   current_week_games %>%
     dplyr::mutate(
       matchup = paste0(away, " @ ", home),
@@ -674,7 +715,7 @@ if (nrow(current_week_games) > 0) {
   cat("\nTotal games scheduled:", nrow(current_week_games), "\n")
 
   # Summary statistics
-  cat("\n--- Week", next_week, "Spread Summary ---\n")
+  cat("\n---", next_week_label, "Spread Summary ---\n")
   spread_summary <- current_week_games %>%
     dplyr::mutate(
       spread_abs = abs(home_spread),
@@ -708,6 +749,6 @@ if (nrow(current_week_games) > 0) {
   cat("  Smallest spread:", min(spread_summary$spread_abs), "points\n")
 
 } else {
-  cat("No games scheduled for Week", next_week, "\n")
-  cat("Available weeks:", paste(unique(games$week), collapse = ", "), "\n")
+  cat("No games scheduled for", next_week_label, "\n")
+  cat("Available weeks:", paste(unique(games$week_raw), collapse = ", "), "\n")
 }

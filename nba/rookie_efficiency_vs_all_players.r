@@ -284,7 +284,15 @@ if (nrow(player_ratings) > 0) {
     # Diagonal line for net rating = 0 (OFF_NORM = DEF_NORM, or y = x)
     geom_abline(intercept = 0, slope = 1, linetype = "dotted",
                 color = "darkgreen", linewidth = 1, alpha = 0.7) +
-    # All non-top-10-pick players (including other rookies and veterans)
+    # All players in light grey background layer
+    geom_point(
+      data = plot_data,
+      size = 2,
+      color = "gray85",
+      alpha = 0.4,
+      stroke = 0
+    ) +
+    # Non-top-10-pick players with size/alpha encoding
     geom_point(
       data = filter(plot_data, !IS_TOP10_PICK),
       aes(size = USG_PCT_SCALED, alpha = MIN),

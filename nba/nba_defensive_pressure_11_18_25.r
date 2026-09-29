@@ -9,6 +9,7 @@ library(purrr)
 library(readr)
 library(ggplot2)
 library(scales)
+library(progress)
 
 # ---- Parameters -------------------------------------------------------------
 most_recent <- most_recent_nba_season()
@@ -39,7 +40,7 @@ get_shots_by_defender_distance <- function(season) {
   
   results <- map_dfr(dist_ranges, function(dist) {
     tryCatch({
-      Sys.sleep(0.3)
+      Sys.sleep(0.1)
       
       data <- nba_leaguedashteamptshot(
         season = season,
@@ -73,7 +74,7 @@ get_team_defense_tracking <- function(season) {
   
   results <- map_dfr(categories, function(cat) {
     tryCatch({
-      Sys.sleep(0.3)
+      Sys.sleep(0.1)
       
       data <- nba_leaguedashptteamdefend(
         season = season,

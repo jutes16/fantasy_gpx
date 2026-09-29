@@ -1,0 +1,6 @@
+season,week,slot,game,pick,my_line,mkt_line,closing_line,pts_value,tier,model_win_rate,result,margin
+2026,3,1,TEN @ NYG,TEN +3.5,-3.5,-2.5,-2.5,1.0,EDGE,0.561,L,-5
+2026,3,2,BAL @ DAL,BAL -2.5,2.5,3.5,3.5,1.0,EDGE,0.545,W,3
+2026,3,3,NE @ JAX,NE +3.5,-3.5,-3.0,-3.0,0.5,slim,0.534,L,-29
+2026,3,4,LV @ NO,LV +3.5,-3.5,-3.0,-3.0,0.5,slim,0.534,W,8
+2026,3,5,KC @ MIA,MIA +11.5,11.5,10.5,10.5,1.0,EDGE,0.533,L,-14

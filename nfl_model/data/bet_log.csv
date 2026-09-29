@@ -1,0 +1,15 @@
+season,week,game,pick,my_line,mkt_line_at_bet,closing_line,pts_value,model_win_rate,verdict,result,margin,notes
+2026,3,KC @ MIA,MIA +11.5,11.5,10.5,10.5,1.0,0.545,PLAY,L,-14,seeded from chat card
+2026,3,BAL @ DAL,BAL -2.5,2.5,3.5,3.5,1.0,0.545,PLAY,W,3,seeded from chat card
+2026,3,CIN @ PIT,PIT +3.5,3.5,3.5,3.5,0.0,0.5,PASS,W,3,seeded from chat card
+2026,3,TEN @ NYG,TEN +3.5,-3.5,-2.5,-2.5,1.0,0.545,PLAY,L,-5,seeded from chat card
+2026,3,LAR @ DEN,DEN +2.5,2.5,2.5,2.5,0.0,0.5,PASS,W,4,seeded from chat card
+2026,3,SEA @ WAS,WAS +7.5,7.5,7.5,7.5,0.0,0.5,PASS,W,2,seeded from chat card
+2026,3,HOU @ IND,IND +2.5,2.5,1.5,1.5,1.0,0.545,PLAY,W,2,seeded from chat card
+2026,3,CAR @ CLE,CLE +2.5,2.5,2.5,2.5,0.0,0.5,PASS,W,3,seeded from chat card
+2026,3,NE @ JAX,NE +3.5,-3.5,-3.0,-3.0,0.5,0.525,lean,L,-29,seeded from chat card
+2026,3,ARI @ SF,SF -8.5,-8.5,-8.5,-8.5,0.0,0.5,PASS,L,6,seeded from chat card
+2026,3,LV @ NO,NO -3.5,-3.5,-3.0,-3.0,-0.5,0.5,PASS,L,-8,seeded from chat card
+2026,3,NYJ @ DET,DET -6.5,-6.5,-6.5,-6.5,0.0,0.5,PASS,W,7,seeded from chat card
+2026,3,LAC @ BUF,LAC +7.5,-7.5,-7.0,-7.0,0.5,0.525,lean,L,-8,seeded from chat card
+2026,3,MIN @ TB,MIN -1.5,1.5,1.5,1.5,0.0,0.5,PASS,W,7,seeded from chat card
