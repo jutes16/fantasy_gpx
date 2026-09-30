@@ -88,6 +88,7 @@ Just the signal tables:
 | `pool.py` | **Main engine.** Ranks every game, returns the best 5, reports expected wins. |
 | `sample_week.py` | Loads a week from `weekly_lines.xlsx` (`load_games`) and scores it. |
 | `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
+| `ml_vs_spread.py` | Can ELWAY make money? Grades registered Kalshi win-vs-spread pairs (`data/elway/kalshi_test_*.csv`) and straight moneyline vs spread bets at sportsbook closing prices. |
 | `import_elway.py` | Parses a pasted ELWAY projection table into the workbook (and the log, for submitted weeks). |
 | `fetch_splits.py` | Action Network splits via Apify; `import` copies saved splits in without an API call. |
 | `log_week.py` | Archive submission-time lines and signals; auto-grade from nflverse. |
