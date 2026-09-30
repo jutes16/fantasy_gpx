@@ -1,0 +1,34 @@
+name: CI
+
+# Runs on every push and PR that touches the NFL model or betting code.
+# Offline only: no API calls, no local-only / paywalled data.
+on:
+  push:
+    paths: ["nfl_model/**", "nfl_bets/**", ".github/workflows/ci.yml"]
+  pull_request:
+    paths: ["nfl_model/**", "nfl_bets/**", ".github/workflows/ci.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pandas numpy scipy openpyxl pytest
+
+      - name: Compile every script (catches syntax errors)
+        run: python -m compileall -q nfl_model nfl_bets
+
+      - name: Test nfl_bets (prices, settlement, margin models)
+        working-directory: nfl_bets
+        run: python -m pytest -q tests
+
+      - name: Test nfl_model (pool scoring, parsers)
+        working-directory: nfl_model
+        run: python -m pytest -q tests
