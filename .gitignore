@@ -24,3 +24,8 @@ nba/plots/
 
 # Paywalled ELWAY projection pastes (Silver Bulletin subscriber content)
 nfl_model/data/elway/
+nfl_bets/data/elway/
+nfl_bets/data/nflverse_games.csv
+__pycache__/
+# Excel lock files
+~$*
