@@ -439,6 +439,16 @@ At the market close, by season (2026 is at the pool line, weeks 1–3):
 | side with ≤ 35% of tickets | 33-39, 46% | 61-88, 41% | 82-51, 62% | 176-178, 50% [45, 55] | 14-7, 67% |
 | side the line moved toward | – | 119-129, 48% | 69-60, 53% | 188-189, 50% [45, 55] | 19-19, 50% |
 
+**Line movement was mismeasured until 2026-10-02.** Action Network's
+"opening line" is the first line ever posted -- usually the summer lookahead
+(median 83 days before kickoff in 2026) -- so "line moved toward" measured the
+whole offseason, not the game week. `fetch_splits.py` now takes the
+game-week open (the line 7 days before kickoff) from the line history and
+keeps the lookahead separately (`an_open_lookahead`). The history only exists
+for recent pulls (2026 week 3 on), so earlier seasons use hand-collected
+game-week opens where there are any. With true game-week opens: 2026 16-10,
+2025 33-25, 2023-25 vs the close 30-28 -- too few games to call yet.
+
 **Pooled over three seasons, the split signals are worth nothing (50–52%).**
 2025 was the outlier, not 2023–24. The seasons differ more than chance
 allows (chi-square p = 0.002 for the ≤35% signal), which is the signature

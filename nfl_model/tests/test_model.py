@@ -1,5 +1,6 @@
 """Offline tests for the pool model's pure functions (no data files needed)."""
 
+import numpy as np
 import pytest
 
 from fetch_splits import canon, parse as parse_splits
@@ -56,7 +57,9 @@ def test_parse_action_network_item():
     d = parse_splits(items, 2025, 1)
     assert len(d) == 1
     r = d.iloc[0]
-    assert (r.an_line, r.an_open_line, r.an_home_bets_pct, r.an_home_money_pct) == (-7.5, -7.0, 60, 80)
+    assert (r.an_line, r.an_home_bets_pct, r.an_home_money_pct) == (-7.5, 60, 80)
+    # openingLine is the lookahead; with no line history there's no game-week open
+    assert r.an_open_lookahead == -7.0 and np.isnan(r.an_open_line)
     assert canon("LA") == "LAR"
 
 
@@ -83,3 +86,20 @@ def test_score_game_reports_its_components():
                         proj_margin=4.5, proj_weight=0.5))
     assert s["win_rate"] == pytest.approx(s["base_rate"] + s["proj_adj"], abs=1e-4)
     assert s["proj_adj"] > 0
+
+
+def test_game_week_open_uses_line_history_not_lookahead():
+    from fetch_splits import _week_open, parse
+    g = {"awayTeam": {"abbreviation": "PHI"}, "homeTeam": {"abbreviation": "CHI"},
+         "startTime": "2026-09-29T00:15:00Z",
+         "consensus": {"spread": {"sides": [{"side": "home", "line": 3.5}]}},
+         "lineMovement": {"spread": [{"side": "home", "openingLine": -1.5}]},   # July lookahead
+         "lineMovementHistory": [{"market": "spread", "side": "home", "bookName": "Consensus",
+                                  "history": [{"recordedAt": "2026-07-06T11:00:00Z", "line": -1.5},
+                                              {"recordedAt": "2026-09-21T12:00:00Z", "line": 3.0},
+                                              {"recordedAt": "2026-09-25T12:00:00Z", "line": 3.5}]}]}
+    assert _week_open(g) == pytest.approx(3.0)      # standing line 7 days before kickoff
+    r = parse([g], 2026, 3).iloc[0]
+    assert r.an_open_line == pytest.approx(3.0) and r.an_open_lookahead == pytest.approx(-1.5)
+    g.pop("lineMovementHistory")
+    assert np.isnan(parse([g], 2026, 3).iloc[0].an_open_line)   # no history -> no open, not the lookahead
