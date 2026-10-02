@@ -90,6 +90,7 @@ Just the signal tables:
 | `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
 | `margins.py` | How games finish around a closing line (historical, key numbers included); `clv_prob` turns a line edge into cover probability. |
 | `scoring_test.py` | Tests scoring picks by exact cover probability vs the band multiplier (it didn't beat it; see below). |
+| `situational_factors.py` | Tests weather, referees, rest/travel and two media-style trends against the closing line (nothing survives; see below). |
 | `bounce_back_test.py` | Tests betting teams coming off a loss (SU or ATS) at the closing line, 2015-present (no edge; see below). |
 | `ml_vs_spread.py` | Can ELWAY make money? Grades registered Kalshi win-vs-spread pairs (`data/elway/kalshi_test_*.csv`) and straight moneyline vs spread bets at sportsbook closing prices. |
 | `import_elway.py` | Parses a pasted ELWAY projection table into the workbook (and the log, for submitted weeks). |
@@ -374,6 +375,17 @@ apart; the honest test is every other season:
 2025 itself was 54.1% off an ATS loss, but on 135 bets (CI 46-62%), and only
 5 of 12 seasons clear 52.4%. That is noise around 50%, not an edge, even for
 a no-vig pool. Re-run it as the season goes.
+
+## Situational factors: weather, referees, rest (no edge at the close)
+
+`situational_factors.py` tests eight hypotheses fixed in advance, each with a
+mechanism, against the closing line (2015 to date), with a multiple-testing
+allowance. None survives. Closest: unders in wind of 15+ mph, 55.1% on 214
+games (CI 48-62%), steady across eras but no stronger at 20+ mph. Referee
+tendencies don't persist (2015-20 vs 2021+ correlation -0.68); rest and
+travel angles are priced; divisional dogs 52.4% and Thursday home teams 51.0%
+look like the noise media trends usually are. Any weather edge would be in
+timing (bet before the total moves), which needs opening totals to test.
 
 ## Why the record will lie to you
 
