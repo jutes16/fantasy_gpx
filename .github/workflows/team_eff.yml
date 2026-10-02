@@ -2,10 +2,9 @@ name: Generate Team Efficiency Plots
 
 on:
   workflow_dispatch:
-  # PAUSED (2026-10-02) during the offseason. The script now picks the latest
-  # season with games automatically, so re-enabling needs no other change.
-  # schedule:
-  #   - cron: '0 7 1 * *'  # 7 AM UTC on the 1st of each month
+  # The script picks the latest season with games, so this needs no yearly change.
+  schedule:
+    - cron: '0 7 1 * *'  # 7 AM UTC on the 1st of each month
 
 jobs:
   Generate-Team-Plots:
