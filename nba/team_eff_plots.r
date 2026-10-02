@@ -12,8 +12,23 @@ script_dir <- local({
 })
 
 # Season to plot, as hoopR numbers it: the year the season ENDS
-# (2026 = the 2025-26 season).
-season_year <- 2026
+# (2026 = the 2025-26 season). By default, the most recent season that has
+# regular-season games, so it moves to 2026-27 on its own once games are
+# played. Override with NBA_SEASON, e.g. NBA_SEASON=2025 Rscript team_eff_plots.r OKC
+latest_season_with_games <- function() {
+  newest <- hoopR::most_recent_nba_season()
+  for (s in c(newest, newest - 1, newest - 2)) {
+    tb <- tryCatch(suppressMessages(hoopR::load_nba_team_box(s)), error = function(e) NULL)
+    if (!is.null(tb) && nrow(tb) > 0 && any(tb$season_type == 2)) return(s)
+  }
+  stop("no regular-season box scores found for ", newest, " or the two seasons before")
+}
+season_year <- if (nzchar(Sys.getenv("NBA_SEASON"))) {
+  as.integer(Sys.getenv("NBA_SEASON"))
+} else {
+  latest_season_with_games()
+}
+message("Season: ", season_year - 1, "-", substr(season_year, 3, 4))
 
 # Teams: Rscript team_eff_plots.r UTA [CLE]  (second team optional)
 team_input <- "UTA"   # NBA 3-letter abbreviation
