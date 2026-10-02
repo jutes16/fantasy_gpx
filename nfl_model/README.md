@@ -56,12 +56,48 @@ All lines are **home-perspective** (negative = home favored).
      `DISAGREES` against the card.
    (`python3 sample_week.py <week>` shows the plain PLAY/lean/PASS view.)
 5. Submit, then log it: `python3 log_week.py submit <week> --picks A,B,C,D,E`.
-   This snapshots every game's lines, signals and ELWAY numbers into
-   `data/pool_picks_log.csv`, so the log shows what you knew when you picked.
-6. Optional: `python3 pool_tracker.py claude <week> A,B,C,D,E` logs Claude's
-   picks as a third card.
-7. After results: `python3 log_week.py grade <week>`, then
+   This snapshots every game on the board -- lines, signals, ELWAY numbers,
+   the **model's card** and **your picks** -- into `data/pool_picks_log.csv`,
+   time-stamped, so the log shows what you knew when you picked. Run it once,
+   when you actually submit: re-running it replaces the week's snapshot
+   (including the market line). Without `--picks`, the model's card is
+   logged as your submission.
+6. Log Claude's picks: `python3 pool_tracker.py claude <week> A,B,C,D,E`
+   (see "Three cards" below).
+7. After the games: `python3 log_week.py grade <week>` (results and closing
+   lines from nflverse, graded at the pool line), then
    `python3 pool_tracker.py report`.
+
+### Three cards: you, the model, Claude
+
+`pool_tracker.py report` grades three sets of picks side by side, all from
+the same pick log, at the same pool lines, margins and closing lines:
+
+| card | where it comes from | command |
+|---|---|---|
+| **model** | `pool.py`'s top 5, logged automatically by `submit` | (none; part of step 5) |
+| **you** | the picks you actually sent | `log_week.py submit <week> --picks ...` |
+| **Claude** | picks made by Claude in a **separate conversation** | `pool_tracker.py claude <week> A,B,C,D,E` |
+
+- **Claude's picks are made independently.** They come from a separate
+  Claude conversation that does *not* see `pool.py`'s card, so the Claude
+  card is a genuine third opinion, not a copy of the model. Don't ask
+  Claude for picks in the same session where it's been running `pool.py`.
+- **Order:** `submit` and `claude` can run in either order, but the week must
+  be submitted before it's graded: Claude's picks are graded against the board
+  that `submit` logs. Without it, the report warns that the team isn't on that
+  week's board and skips Claude's week.
+- **Format:** team codes as in `weekly_lines.xlsx` (e.g. `LAR`, `JAX`, `WAS`),
+  naming the team picked; the side follows from it. Re-running `claude` for a
+  week replaces that week's picks. Stored in `data/claude_picks.csv`.
+- **Grading:** `log_week.py grade <week>` grades all three cards at once.
+
+| when | command |
+|---|---|
+| when you submit | `python3 log_week.py submit 4 --picks A,B,C,D,E` |
+| any time that week | `python3 pool_tracker.py claude 4 A,B,C,D,E` |
+| after the games | `python3 log_week.py grade 4` |
+| any time | `python3 pool_tracker.py report` |
 
 **Editing the workbook in Excel:** click **Done**, never **Move to Trash**,
 if macOS says it "could not verify" the file. Excel's sandbox tags saved
