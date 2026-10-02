@@ -5,8 +5,10 @@ new_packages <- required_packages[!(required_packages %in% installed.packages()[
 if(length(new_packages)) install.packages(new_packages)
 lapply(required_packages, require, character.only = TRUE)
 
-# Load NBA game data for the  season
-season_year <- 2024
+# Season to plot, as hoopR's load_* functions number it: the year the season
+# ENDS (2026 = the 2025-26 season). stats.nba.com wants "2025-26" instead.
+season_year <- 2026
+api_season <- hoopR::year_to_season(season_year - 1)   # "2025-26"
 # Choose the team to plot (by NBA 3-letter abbreviation)
 team_input <- "UTA"  # NBA 3-letter abbreviation (e.g., "UTA")
 team_input_2 <- "CLE"  # e.g., "BOS" or NULL optional parameter to compare two teams ---
@@ -32,13 +34,13 @@ nba_player_box <- hoopR::load_nba_player_box(season_year)
 if (!is.null(last_n_games)) {
   adv_data <- nba_leaguedashplayerstats(
     measure_type = "Advanced",
-    season = season_year,
+    season = api_season,
     last_n_games = last_n_games
   )
 } else {
   adv_data <- nba_leaguedashplayerstats(
     measure_type = "Advanced",
-    season = season_year,
+    season = api_season,
     date_from = game_segment_start,
     date_to = game_segment_end
   )
@@ -58,14 +60,14 @@ adv_data <- adv_data %>%
 # Load advanced team stats with optional filtering by date range or last n games
 if (!is.null(last_n_games)) {
   team_dash <- nba_leaguedashteamstats(
-    season     = season_year,
+    season     = api_season,
     season_type = "Regular Season",
     measure_type = "Advanced",
     last_n_games = last_n_games
   )
 } else {
   team_dash <- nba_leaguedashteamstats(
-    season     = season_year,
+    season     = api_season,
     season_type = "Regular Season",
     measure_type = "Advanced",
     date_from = game_segment_start,
