@@ -90,6 +90,7 @@ Just the signal tables:
 | `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
 | `margins.py` | How games finish around a closing line (historical, key numbers included); `clv_prob` turns a line edge into cover probability. |
 | `scoring_test.py` | Tests scoring picks by exact cover probability vs the band multiplier (it didn't beat it; see below). |
+| `bounce_back_test.py` | Tests betting teams coming off a loss (SU or ATS) at the closing line, 2015-present (no edge; see below). |
 | `ml_vs_spread.py` | Can ELWAY make money? Grades registered Kalshi win-vs-spread pairs (`data/elway/kalshi_test_*.csv`) and straight moneyline vs spread bets at sportsbook closing prices. |
 | `import_elway.py` | Parses a pasted ELWAY projection table into the workbook (and the log, for submitted weeks). |
 | `fetch_splits.py` | Action Network splits via Apify; `import` copies saved splits in without an API call. |
@@ -356,6 +357,23 @@ the exact cover probability of each line instead of the band multiplier. On
 2015-2025 (leave-one-season-out) the two are equally calibrated (Brier
 0.24229 vs 0.24217). So the distribution is used to *measure* CLV, and the
 band multiplier still *picks*.
+
+## Bounce-back: teams coming off a loss (no edge)
+
+`bounce_back_test.py` bets every team whose previous game was a loss, at the
+closing spread, 2015 to date. 2025, where the pattern was noticed, is kept
+apart; the honest test is every other season:
+
+| signal (all seasons but 2025) | bets | cover | 95% CI |
+|---|---|---|---|
+| off a straight-up loss | 1,182 | 49.0% | 46-52% |
+| off an ATS loss | 1,190 | 50.3% | 47-53% |
+| off an ATS loss by 10+ | 800 | 52.0% | 49-55% |
+| (control) off a straight-up win | 1,174 | 50.9% | 48-54% |
+
+2025 itself was 54.1% off an ATS loss, but on 135 bets (CI 46-62%), and only
+5 of 12 seasons clear 52.4%. That is noise around 50%, not an edge, even for
+a no-vig pool. Re-run it as the season goes.
 
 ## Why the record will lie to you
 
