@@ -2,8 +2,11 @@ name: Generate Team Efficiency Plots
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 7 1 * *'  # every morning 7 AM UTC
+  # PAUSED (2026-10-02): the 2025-26 season is over, and the script's
+  # stats.nba.com calls time out from GitHub's runners. Re-enable once the
+  # script gets its data from hoopR's box scores instead.
+  # schedule:
+  #   - cron: '0 7 1 * *'  # 7 AM UTC on the 1st of each month
 
 jobs:
   Generate-Team-Plots:
@@ -31,27 +34,48 @@ jobs:
         with: 
           packages: tidyverse, hoopR, janitor, ggrepel, jsonlite, ggimage, rvest, progressr, purrr
 
+      # Each team runs in its own R process; a failure no longer disappears
+      # into a warning. The step fails (after trying every team) if any did.
       - name: Run Team Efficiency Script for All Teams
         working-directory: nba
         run: |
           Rscript -e "
-          library(purrr);
           teams <- c('ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW',
                      'HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK',
                      'OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WSH');
-          walk(teams, function(t) {
+          failed <- character(0);
+          for (t in teams) {
             message('Running efficiency plot for ', t);
-            system(paste('Rscript team_eff_plots.r', t), intern = TRUE);
-          })
+            if (system2('Rscript', c('team_eff_plots.r', t)) != 0) failed <- c(failed, t);
+          };
+          if (length(failed)) {
+            message('::error::', length(failed), ' of ', length(teams), ' teams failed: ', paste(failed, collapse = ', '));
+            quit(status = 1);
+          }
           "
 
+      # Plots are always attached to the run as a downloadable artifact,
+      # even if some teams failed.
+      - name: Upload plots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-efficiency-plots
+          path: nba/plots/*.png
+          if-no-files-found: warn
+
+      # plots/ and *.png are git-ignored repo-wide, so add them with -f
       - name: Commit generated plots
         working-directory: nba
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add plots/*.png
-          git diff --cached --quiet || git commit -m 'Auto-update: team efficiency plots'
+          if ls plots/*.png >/dev/null 2>&1; then
+            git add -f plots/*.png
+            git diff --cached --quiet || git commit -m 'Auto-update: team efficiency plots'
+          else
+            echo "::warning::no plots generated"
+          fi
 
       - name: Push changes
         run: git push
