@@ -151,32 +151,47 @@ _HIST = {}
 
 def _history(first=2015, last=SEASON - 1):
     """(closing spreads, home margins) of every completed regular-season game,
-    nflverse convention (spread > 0 = home favoured). Cached per process."""
+    nflverse convention (spread > 0 = home favoured), each game mirrored
+    (-spread, -margin) to double the sample and cancel home/away noise.
+    Cached per process."""
     if (first, last) not in _HIST:
         g = nflverse(refresh=False)
         h = g[(g.game_type == "REG") & g.result.notna() & g.spread_line.notna()
               & g.season.between(first, last)]
-        _HIST[(first, last)] = (h.spread_line.to_numpy(), h.result.to_numpy().astype(int))
+        S, R = h.spread_line.to_numpy(float), h.result.to_numpy().astype(int)
+        _HIST[(first, last)] = (np.concatenate([S, -S]), np.concatenate([R, -R]))
     return _HIST[(first, last)]
+
+
+def _tilt(ks, p, target):
+    """Reweight p_k by exp(theta * k) so the mean is `target`; keeps every
+    key-number spike in proportion to its neighbours."""
+    lo, hi = -1.0, 1.0
+    for _ in range(60):
+        th = (lo + hi) / 2
+        q = p * np.exp(th * (ks - ks.mean()) / 10)
+        q = q / q.sum()
+        if (ks * q).sum() < target:
+            lo = th
+        else:
+            hi = th
+    return q
 
 
 def historical_dist(center, bw=1.25):
     """Home-margin distribution for a game projected at `center` points.
 
-    Historical margins are used UNSHIFTED, weighted by a Gaussian kernel on how
-    close each game's closing spread was to `center` (bandwidth `bw` points),
-    so the spikes at 3, 7, 10 survive. The leftover gap between the weighted
-    mean and `center` (a fraction of a point) is closed by blending in the
-    same distribution moved one integer toward `center`.
+    Historical margins are used UNSHIFTED (and mirrored), weighted by a
+    Gaussian kernel on how close each game's closing spread was to `center`
+    (bandwidth `bw` points), so the spikes at 3, 7, 10 survive. The mean is
+    then put exactly on `center` by exponential tilting -- sliding mass to a
+    neighbouring integer instead would move the spike at 3 onto 4.
     """
     S, R = _history()
     ks = np.arange(-80, 81)
     w = np.exp(-0.5 * ((S - center) / bw) ** 2)
     p = np.bincount(np.clip(R, ks[0], ks[-1]) - ks[0], weights=w, minlength=len(ks))
-    p = p / p.sum()
-    gap = center - float((ks * p).sum())
-    a = min(abs(gap), 1.0)
-    p = (1 - a) * p + a * np.roll(p, 1 if gap > 0 else -1)
+    p = _tilt(ks, p / p.sum(), center)
     return dict(zip(ks.tolist(), p))
 
 

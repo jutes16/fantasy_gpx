@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from margins import clv_prob, cover_prob
+
 LOG = "data/archive/pool_log.csv"
 SUBMISSIONS = "data/pool_picks_log.csv"
 CLAUDE_PICKS = "data/claude_picks.csv"
@@ -112,12 +114,19 @@ def report(df):
         clv["clv"] = np.where(
             is_home, clv.my_line - clv.closing_line, clv.closing_line - clv.my_line
         ).round(2)
+        # the same CLV in cover probability: a half point through 3 or 7 is
+        # worth far more than one through 4 (margins.py, historical results)
+        clv["clv_prob"] = [
+            clv_prob(line, "home" if h else "away", close)
+            for line, h, close in zip(clv.my_line, is_home, clv.closing_line)]
         print(f"\nCLOSING LINE VALUE  (n={len(clv)})")
         print(
             f"  beat {int((clv.clv>0).sum())} | tied {int((clv.clv==0).sum())} "
             f"| worse {int((clv.clv<0).sum())}"
         )
-        print(f"  mean CLV: {clv.clv.mean():+.2f} pts")
+        print(f"  mean CLV: {clv.clv.mean():+.2f} pts  =  "
+              f"{clv.clv_prob.mean()*100:+.1f}% cover probability (key numbers counted)")
+        print(f"  total   : {clv.clv_prob.sum():+.2f} expected wins vs taking the closing line")
         print("  (this converges far faster than W-L. Watch it, not the record.)")
 
     # ---- by value tier ----
