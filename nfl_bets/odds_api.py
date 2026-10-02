@@ -9,7 +9,7 @@ Needs ODDS_API_KEY in your environment (e.g. in ~/.zshrc). Never in the repo.
 
 Credits (free tier: 500 a month): game odds cost 1 per market, so a snapshot
 (moneyline + spread + total) is 3. Player props cost 1 per market per game
-(see ../nfl/fantasy_props.py). Every response is saved under data/odds/, and
+(see ../nfl_fantasy/fantasy_props.py). Every response is saved under data/odds/, and
 each call prints the credits used and remaining.
 
 Lines are converted to this project's home-perspective convention
