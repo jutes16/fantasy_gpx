@@ -110,3 +110,34 @@ def test_parse_elway_and_team_codes():
     assert e.iloc[1].elway_home_wp == pytest.approx(0.4377)
     assert e.iloc[2][["home", "away"]].tolist() == ["JAX", "LAR"]
     assert canon("wsh") == "WAS"
+
+
+# ------------------------------------------------------------------ best price (odds_api)
+def test_odds_api_tidy_stores_spreads_as_the_home_line(monkeypatch):
+    import odds_api
+    sched = pd.DataFrame(dict(away=["LAR"], home=["PHI"]))
+    monkeypatch.setattr(odds_api, "schedule", lambda *a, **k: sched)
+    raw = [{"home_team": "Philadelphia Eagles", "away_team": "Los Angeles Rams", "bookmakers": [
+        {"title": "BookA", "markets": [
+            {"key": "spreads", "outcomes": [{"name": "Philadelphia Eagles", "price": -104, "point": 3.5},
+                                            {"name": "Los Angeles Rams", "price": -115, "point": -3.5}]},
+            {"key": "h2h", "outcomes": [{"name": "Philadelphia Eagles", "price": 165},
+                                        {"name": "Los Angeles Rams", "price": -190}]}]}]}]
+    d = odds_api.tidy(raw, 4)
+    sp = d[d.market == "spreads"].set_index("side")
+    assert sp.at["home", "point"] == 3.5 and sp.at["away", "point"] == 3.5   # both as PHI's line
+    assert set(d[d.market == "h2h"].side) == {"home", "away"}
+
+
+def test_book_offers_pick_from_every_book():
+    books = pd.DataFrame([
+        dict(away="LAR", home="PHI", book="A", market="h2h", side="home", point=None, price=150),
+        dict(away="LAR", home="PHI", book="B", market="h2h", side="home", point=None, price=165),
+        dict(away="LAR", home="PHI", book="A", market="spreads", side="away", point=3.0, price=-110),
+        dict(away="LAR", home="PHI", book="B", market="spreads", side="away", point=2.5, price=-105),
+    ])
+    r = pd.Series(dict(away="LAR", home="PHI"))
+    ml, sp = bets._book_offers(r, books)
+    assert sorted(ml["home"]) == [("A", 150), ("B", 165)]
+    # away offers are converted to the away team's own number
+    assert sorted(sp["away"]) == [("A", -3.0, -110), ("B", -2.5, -105)]
