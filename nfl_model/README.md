@@ -131,6 +131,7 @@ Just the signal tables:
 | `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
 | `margins.py` | How games finish around a closing line (historical, key numbers included); `clv_prob` turns a line edge into cover probability. |
 | `scoring_test.py` | Tests scoring picks by exact cover probability vs the band multiplier (it didn't beat it; see below). |
+| `splits_model.py` | Models betting splits continuously (linear vs penalized spline), scored out of sample by season (no information; see below). |
 | `situational_factors.py` | Tests weather, referees, rest/travel and two media-style trends against the closing line (nothing survives; see below). |
 | `bounce_back_test.py` | Tests betting teams coming off a loss (SU or ATS) at the closing line, 2015-present (no edge; see below). |
 | `ml_vs_spread.py` | Can ELWAY make money? Grades registered Kalshi win-vs-spread pairs (`data/elway/kalshi_test_*.csv`) and straight moneyline vs spread bets at sportsbook closing prices. |
@@ -416,6 +417,26 @@ apart; the honest test is every other season:
 2025 itself was 54.1% off an ATS loss, but on 135 bets (CI 46-62%), and only
 5 of 12 seasons clear 52.4%. That is noise around 50%, not an edge, even for
 a no-vig pool. Re-run it as the season goes.
+
+## Betting splits, modelled continuously (no information)
+
+`splits_model.py` predicts whether the home team covers the closing spread
+from its sharp gap (money % minus tickets %) and ticket %, for every game with
+Action Network splits (783 games, 2023 to date). Three models, each scored on
+seasons it wasn't fit on (leave-one-season-out):
+
+| model | log loss | vs. no splits |
+|---|---|---|
+| 0. no splits (flat ~51% home cover) | 0.6931 | -- |
+| 1. linear | 0.7033 | worse (overfits) |
+| 2. non-linear: penalized splines, penalty tuned by CV | 0.6941 | slightly worse |
+
+Cross-validation flattens the spline almost completely, and the linear fit's
+effects are nil (odds ratio per 10 pts of gap 1.005, 95% CI 0.90-1.13). The
+fitted cover rate moves less than a point across a 60-point range of either
+signal. The bucket results (60% at +15 to 20, 22% at +30) were small-sample
+noise. These are kickoff splits graded at the close; whether midweek splits
+lead line moves is a separate, untested question.
 
 ## Situational factors: weather, referees, rest (no edge at the close)
 
