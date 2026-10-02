@@ -88,6 +88,8 @@ Just the signal tables:
 | `pool.py` | **Main engine.** Ranks every game, returns the best 5, reports expected wins. |
 | `sample_week.py` | Loads a week from `weekly_lines.xlsx` (`load_games`) and scores it. |
 | `update_mkt.py` | Adds a week's games / refreshes `mkt_line` from nflverse. Never touches `my_line`. |
+| `margins.py` | How games finish around a closing line (historical, key numbers included); `clv_prob` turns a line edge into cover probability. |
+| `scoring_test.py` | Tests scoring picks by exact cover probability vs the band multiplier (it didn't beat it; see below). |
 | `ml_vs_spread.py` | Can ELWAY make money? Grades registered Kalshi win-vs-spread pairs (`data/elway/kalshi_test_*.csv`) and straight moneyline vs spread bets at sportsbook closing prices. |
 | `import_elway.py` | Parses a pasted ELWAY projection table into the workbook (and the log, for submitted weeks). |
 | `fetch_splits.py` | Action Network splits via Apify; `import` copies saved splits in without an API call. |
@@ -332,6 +334,28 @@ Head to head over a season:
 two-thirds chance of beating an average opponent. In a pool of a dozen
 people that is the difference between contending and mid-pack. It will
 not win every year, and a sharp opponent at 53%+ is a coin flip.
+
+## Closing-line value, in points and in probability
+
+CLV is reported both ways. Points treat every half point alike; probability
+counts what each half point is actually worth, using the historical
+distribution of margins around the closing line (`margins.py`):
+
+| half point | CLV in cover probability | measured in `keynumbers.py` |
+|---|---|---|
+| through 3 (+3 → +3.5, −3 → −2.5) | +4.8 pts | +5.2 pp |
+| through 7 (+7 → +7.5, −7 → −6.5) | +3.1 pts | +3.2 / +3.7 pp |
+| through nothing (+4 → +4.5) | +1.4 pts | +1.6 pp |
+
+`pool_tracker.py report` shows mean CLV in both units plus the expected wins
+it adds; `log_week.py clv` shows value held at submit vs close in both.
+
+**Scoring picks the same way did not help.** `scoring_test.py` ranked picks by
+the exact cover probability of each line instead of the band multiplier. On
+2025's pool sheet it went 51-39 vs 57-33 for the current model; over
+2015-2025 (leave-one-season-out) the two are equally calibrated (Brier
+0.24229 vs 0.24217). So the distribution is used to *measure* CLV, and the
+band multiplier still *picks*.
 
 ## Why the record will lie to you
 
