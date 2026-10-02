@@ -28,9 +28,16 @@ season is roughly $2 (inside Apify's free credits).
 
 Caveat: splits for completed games are Action Network's final numbers, not
 what you would have seen at submit time. Treat backfilled weeks accordingly.
+
+Opening lines: an_open_line is the GAME-WEEK open (the consensus line 7 days
+before kickoff, from the pull's line history). Action Network's own
+'openingLine' is the first line ever posted -- usually the summer lookahead --
+and is kept as an_open_lookahead. Pulls without line history (older games)
+get no game-week open rather than the lookahead.
 """
 
 import json
+import re
 import os
 import sys
 from datetime import datetime, timezone
@@ -101,9 +108,39 @@ def _home_side(sides):
     return {}
 
 
-def parse(items, season, week):
-    """Actor items -> one row per game in this project's columns."""
-    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+GAME_WEEK_DAYS = 7      # the game-week open = the line this many days before kickoff
+
+
+def _week_open(g):
+    """The game-week opening spread (home side): the Consensus line recorded
+    GAME_WEEK_DAYS before kickoff, from lineMovementHistory. NaN when the pull
+    has no history (Action Network only includes it for recent games).
+
+    lineMovement.openingLine is NOT this: it is the first line ever recorded,
+    usually the summer lookahead (median 83 days before kickoff in 2026).
+    """
+    start = g.get("startTime")
+    for x in g.get("lineMovementHistory") or []:
+        if (x.get("market") == "spread" and str(x.get("side")).lower() == "home"
+                and x.get("bookName") == "Consensus" and x.get("history") and start):
+            ko = pd.Timestamp(start)
+            pts = sorted(x["history"], key=lambda p: p["recordedAt"])
+            cut = ko - pd.Timedelta(days=GAME_WEEK_DAYS)
+            before = [p for p in pts if pd.Timestamp(p["recordedAt"]) <= cut]
+            # the line standing at the cutoff; if history starts after it, its first point
+            return float((before[-1] if before else pts[0])["line"])
+    return np.nan
+
+
+def parse(items, season, week, stamp=None):
+    """Actor items -> one row per game in this project's columns.
+
+    an_open_line      game-week open (line ~7 days before kickoff), from the
+                      line history; NaN if the pull has no history
+    an_open_lookahead Action Network's 'openingLine': the first line ever
+                      posted, usually the summer lookahead
+    """
+    stamp = stamp or datetime.now(timezone.utc).isoformat(timespec="seconds")
     rows = []
     for g in items:
         away = (g.get("awayTeam") or {}).get("abbreviation")
@@ -116,7 +153,8 @@ def parse(items, season, week):
         rows.append(dict(
             season=season, week=week, away=canon(away), home=canon(home),
             an_line=h.get("line", np.nan),
-            an_open_line=move.get("openingLine", np.nan),
+            an_open_line=_week_open(g),
+            an_open_lookahead=move.get("openingLine", np.nan),
             an_home_bets_pct=h.get("ticketPercent", np.nan),
             an_home_money_pct=h.get("moneyPercent", np.nan),
             an_status=g.get("status", ""),
@@ -197,16 +235,25 @@ def _overwrite_signals(target, an, season):
             continue
         note = str(r.signal_notes) if pd.notna(r.signal_notes) else ""
         prior_was = ""
+        old_tag = ""
         if "Action Network" in note:
             old_tag = note[note.index("Action Network"):]
             if "(was " in old_tag:   # keep the original values from an earlier run
                 prior_was = old_tag[old_tag.index("(was "):].split(")")[0] + ")"
             note = note[:note.index("Action Network")].rstrip("; ")
         replaced = []
-        if pd.notna(a.an_open_line):
-            if pd.notna(r.open_line) and r.open_line != a.an_open_line:
+        came_from_an = bool(old_tag)                 # this row was filled by an earlier import
+        hand_open = re.search(r"open (-?[\d.]+)", prior_was)
+        if pd.notna(a.an_open_line):                 # game-week open from the line history
+            if (not prior_was and not came_from_an and pd.notna(r.open_line)
+                    and r.open_line != a.an_open_line):
                 replaced.append(f"open {_fmt(r.open_line)}")
             target.at[i, "open_line"] = a.an_open_line
+        elif came_from_an:
+            # no line history in this pull: don't keep an Action Network value
+            # (it would be the summer lookahead). Restore the hand-collected
+            # game-week open if one was recorded, else leave it blank.
+            target.at[i, "open_line"] = float(hand_open.group(1)) if hand_open else np.nan
         if pd.notna(a.an_home_bets_pct) and pd.notna(a.an_home_money_pct):
             if ((pd.notna(r.home_bets_pct) or pd.notna(r.home_money_pct))
                     and (r.home_bets_pct, r.home_money_pct)
@@ -278,12 +325,16 @@ def main():
     from_raw = "--from-raw" in sys.argv
 
     for wk in weeks:
+        stamp = None
         if from_raw:
-            with open(raw_path(season, wk)) as f:
+            path = raw_path(season, wk)
+            with open(path) as f:
                 items = json.load(f)
+            # keep the original pull time, not the re-parse time
+            stamp = datetime.fromtimestamp(os.path.getmtime(path), timezone.utc).isoformat(timespec="seconds")
         else:
             items = fetch(season, wk)
-        df = parse(items, season, wk)
+        df = parse(items, season, wk, stamp)
         if df.empty:
             print(f"{season} wk{wk}: no games returned")
             continue

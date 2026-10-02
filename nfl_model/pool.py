@@ -239,7 +239,8 @@ def fmt(res: dict, show_bench: bool = True) -> str:
 def _signals(g, side):
     """Context signals for one pick, from the pick's side. None when not recorded.
 
-    move  : points the market moved toward your team since the open
+    move  : points the market moved toward your team since the game-week open
+            (the line ~7 days before kickoff; fetch_splits.py)
     tix/$ : % of tickets / money on your team
     elway : points ELWAY's projection favours your team over your line
     """
@@ -276,7 +277,7 @@ def factors_view(games, res):
          "              + ELWAY = projection tilt (capped +/-2 pts)",
          "  context only (tested, no edge at the close; not in WIN%):",
          "              KEY% = VAL as cover probability (key numbers counted), MOVE = market",
-         "              move toward your team since the open, TIX/$ = % of tickets / money on",
+         "              move toward your team since the game-week open, TIX/$ = % of tickets / money on",
          "              your team, SHARP = reported sharp side, ELWAY GAP = pts ELWAY likes your",
          "              team more than your line",
          f"{'':2}{'GAME':<12}{'PICK':<11}{'VAL':>5}{'BAND':>6}{'BASE%':>7}{'ELWAY':>7}{'WIN%':>7}"
