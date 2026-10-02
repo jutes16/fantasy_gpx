@@ -95,8 +95,8 @@ model hasn't absorbed.
 |---|---|---|
 | `kalshi_win` | "team wins" YES | ask + fee |
 | `kalshi_spread` | favourite "wins by over k": YES, or NO (= underdog +k) | ask + fee / (1 − bid) + fee |
-| `book_ml` | sportsbook moneyline | nflverse current consensus |
-| `book_spread` | sportsbook spread | nflverse line and odds |
+| `book_ml` | sportsbook moneyline | best price across books with `--books`, else nflverse consensus |
+| `book_spread` | sportsbook spread | best line + price (highest EV) across books with `--books`, else nflverse |
 | `pair` | buy $1 of the win contract, sell $1 of the spread contract (or the reverse) at the strike matching the book line, zero net outlay | both legs at executable prices |
 
 Kalshi spread strikes: the favourite's ladder only, within 3.5 points of the
@@ -159,9 +159,11 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 |---|---|
 | `bets.py` | sheet, log, grade, report, ELWAY paste |
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
+| `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |
 | `data/kalshi/` | timestamped Kalshi snapshots |
+| `data/odds/` | sportsbook odds snapshots (git-ignored) |
 | `data/elway/` | ELWAY tables and distributions (git-ignored: paywalled) |
 | `data/nflverse_games.csv` | cached nflverse schedule/odds (git-ignored) |
 

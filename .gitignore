@@ -29,3 +29,7 @@ nfl_bets/data/nflverse_games.csv
 __pycache__/
 # Excel lock files
 ~$*
+
+# Raw sportsbook odds / player props from The Odds API (re-fetchable; keep out of the public repo)
+nfl_bets/data/odds/
+nfl/data/props/

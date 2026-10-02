@@ -15,7 +15,9 @@ Weekly:
     python3 bets.py report                season ledger by instrument
 
 Options for sheet: --min-ev 0.05 (threshold to flag a bet), --no-fetch (reuse
-the latest Kalshi snapshot instead of pulling a new one).
+the latest Kalshi snapshot instead of pulling a new one), --books (price
+sportsbook bets at the best offer across every book via odds_api.py, 3
+credits; with --no-fetch it reuses the latest saved book snapshot).
 
 Instruments, all priced at what you could actually execute:
     kalshi_win      buy YES on "<team> wins" at the ask, plus the Kalshi fee
@@ -54,7 +56,7 @@ def sell_net(bid):
 
 
 # ------------------------------------------------------------------ pricing
-def price_week(week, fetch=True):
+def price_week(week, fetch=True, books=None):
     sched = schedule(SEASON, week)
     el = load_elway(week)
     if el is None or el.empty:
@@ -125,24 +127,30 @@ def price_week(week, fetch=True):
                                  strike=s.strike, price=1 - s.yes_bid, cost=c, p=1 - p,
                                  ev=(1 - p) / c - 1, ticker=s.ticker))
 
-        # ---- sportsbook moneyline and spread (nflverse consensus)
-        for team, is_home, ml in ((r.home, True, r.home_moneyline), (r.away, False, r.away_moneyline)):
-            if pd.notna(ml):
-                p = M.p_team_wins(is_home)
+        # ---- sportsbook moneyline and spread: every book's offer when a
+        # best-price snapshot is loaded (odds_api.py), else nflverse consensus.
+        # For each side, keep the offer with the highest EV under ELWAY -- for
+        # spreads that weighs the line and the price together.
+        offers_ml, offers_sp = _book_offers(r, books)
+        for team, is_home in ((r.home, True), (r.away, False)):
+            side = "home" if is_home else "away"
+            p = M.p_team_wins(is_home)
+            best = None
+            for book, ml in offers_ml.get(side, []):
                 d = american_to_decimal(ml)
-                bets.append(dict(base, instrument="book_ml", team=team, side="win", strike=np.nan,
-                                 price=ml, cost=1 / d, p=p, ev=p * d - 1, ticker=""))
-        if pd.notna(r.spread_line):
-            # nflverse spread_line > 0 = home favored by that much
-            for team, is_home, odds in ((r.home, True, r.home_spread_odds),
-                                        (r.away, False, r.away_spread_odds)):
-                if pd.isna(odds):
-                    continue
-                line = -r.spread_line if is_home else r.spread_line     # team's number
-                p = M.p_team_by_over(is_home, -line)
+                if best is None or p * d - 1 > best["ev"]:
+                    best = dict(price=ml, cost=1 / d, ev=p * d - 1, ticker=book)
+            if best:
+                bets.append(dict(base, instrument="book_ml", team=team, side="win",
+                                 strike=np.nan, p=p, **best))
+            best = None
+            for book, line, odds in offers_sp.get(side, []):     # line = team's number
+                pc = M.p_team_by_over(is_home, -line)
                 d = american_to_decimal(odds)
-                bets.append(dict(base, instrument="book_spread", team=team, side="cover",
-                                 strike=line, price=odds, cost=1 / d, p=p, ev=p * d - 1, ticker=""))
+                if best is None or pc * d - 1 > best["ev"]:
+                    best = dict(strike=line, price=odds, cost=1 / d, p=pc, ev=pc * d - 1, ticker=book)
+            if best:
+                bets.append(dict(base, instrument="book_spread", team=team, side="cover", **best))
 
         # ---- the win-vs-spread pair at the strike matching the book line
         pair = _pair(r, M, k, kw)
@@ -155,6 +163,32 @@ def price_week(week, fetch=True):
                           book_line=-r.spread_line if pd.notna(r.spread_line) else np.nan,
                           sd=M.sd, model=getattr(M, "kind", "dist")))
     return pd.DataFrame(bets), pd.DataFrame(games), sched
+
+
+def _book_offers(r, books):
+    """(moneyline offers, spread offers) per side for one game:
+    {'home': [(book, price)], ...}, {'home': [(book, team_line, price)], ...}.
+    From a best-price snapshot when given, else nflverse's consensus."""
+    ml, sp = {"home": [], "away": []}, {"home": [], "away": []}
+    if books is not None and len(books):
+        g = books[(books.away == r.away) & (books.home == r.home)]
+        for x in g[g.market == "h2h"].itertuples():
+            ml[x.side].append((x.book, x.price))
+        for x in g[(g.market == "spreads") & g.point.notna()].itertuples():
+            team_line = x.point if x.side == "home" else -x.point   # stored as the home line
+            sp[x.side].append((x.book, team_line, x.price))
+        if any(ml.values()) or any(sp.values()):
+            return ml, sp
+    if pd.notna(r.home_moneyline):
+        ml["home"].append(("consensus", r.home_moneyline))
+    if pd.notna(r.away_moneyline):
+        ml["away"].append(("consensus", r.away_moneyline))
+    if pd.notna(r.spread_line):           # nflverse: > 0 = home favoured
+        if pd.notna(r.home_spread_odds):
+            sp["home"].append(("consensus", -r.spread_line, r.home_spread_odds))
+        if pd.notna(r.away_spread_odds):
+            sp["away"].append(("consensus", r.spread_line, r.away_spread_odds))
+    return ml, sp
 
 
 def _mid(kw, team):
@@ -215,17 +249,25 @@ def describe(b):
         return f"{b.team} wins  YES @ {b.price:.2f}"
     if b.instrument == "kalshi_spread":
         return f"{b.team} by over {b.strike:g}  {b.side.upper()} @ {b.price:.2f}"
+    at = f" @{b.ticker}" if isinstance(b.ticker, str) and b.ticker not in ("", "consensus") else ""
     if b.instrument == "book_ml":
-        return f"{b.team} ML {b.price:+.0f}"
+        return f"{b.team} ML {b.price:+.0f}{at}"
     if b.instrument == "book_spread":
-        return f"{b.team} {b.strike:+g} ({b.price:+.0f})"
+        return f"{b.team} {b.strike:+g} ({b.price:+.0f}){at}"
     if b.instrument == "pair":
         return f"{b.team} {b.side} (k={b.strike:g})"
     return ""
 
 
-def sheet(week, min_ev=0.05, fetch=True, log=False, force=False):
-    bets, games, sched = price_week(week, fetch)
+def sheet(week, min_ev=0.05, fetch=True, log=False, force=False, books=False):
+    book_df = None
+    if books:                       # best price across sportsbooks (odds_api.py)
+        import odds_api
+        book_df = odds_api.snapshot(week) if fetch else odds_api.latest(week)
+        if book_df is None or book_df.empty:
+            print("  no sportsbook snapshot -- using nflverse consensus")
+            book_df = None
+    bets, games, sched = price_week(week, fetch, books=book_df)
     now = datetime.now(timezone.utc)
     print("=" * 92)
     print(f"ELWAY BET SHEET  {SEASON} week {week}   (prices as of {bets.kalshi_snapshot.iloc[0]}; "
@@ -484,7 +526,7 @@ if __name__ == "__main__":
     opt = lambda k, d: float(a[a.index(k) + 1]) if k in a else d
     if cmd == "sheet":
         sheet(int(a[1]), min_ev=opt("--min-ev", 0.05), fetch="--no-fetch" not in a, log="--log" in a,
-              force="--force" in a)
+              force="--force" in a, books="--books" in a)
     elif cmd == "grade":
         grade(int(a[1]))
     elif cmd == "report":

@@ -1,6 +1,5 @@
 # %%
 import requests
-import dtale
 import pandas as pd
 import difflib
 # %%
@@ -14,9 +13,6 @@ def get_sleeper_weekly_stats(year=2024, week=1):
     df = df.reset_index()
     return df
 
-stats_df = get_sleeper_weekly_stats(2024, 6)
-print(stats_df.head())
-print(stats_df.columns)
 # %%
 def get_sleeper_players(active_only=True):
     url = "https://api.sleeper.app/v1/players/nfl"
@@ -35,11 +31,6 @@ def get_sleeper_players(active_only=True):
         print(f"Filtered players count: {len(players_df)}")
     return players_df[['player_id', 'full_name', 'position', 'team']]
 
-players_df = get_sleeper_players()
-stats_df = get_sleeper_weekly_stats(2025, 6)
-
-merged = stats_df.merge(players_df, on='player_id', how='left')
-print(merged[['full_name', 'position', 'team', 'pts_half_ppr']].head())
 
 # %% Calculate lineup points
 
@@ -90,7 +81,18 @@ def calculate_lineup_points(lineup_names, year=2025, week=6, scoring_col='pts_ha
                 print(f"  No suggestions for '{m}'.")
     return total
 
-my_lineup = ["Jaxson Dart", "C.J. Stroud", "J.K. Dobbins"]
-calculate_lineup_points(my_lineup, year=2025, week=5)
+if __name__ == "__main__":
+    # examples (run this file directly; importing it only provides the functions)
+    stats_df = get_sleeper_weekly_stats(2024, 6)
+    print(stats_df.head())
+    print(stats_df.columns)
+
+    players_df = get_sleeper_players()
+    stats_df = get_sleeper_weekly_stats(2025, 6)
+    merged = stats_df.merge(players_df, on='player_id', how='left')
+    print(merged[['full_name', 'position', 'team', 'pts_half_ppr']].head())
+
+    my_lineup = ["Jaxson Dart", "C.J. Stroud", "J.K. Dobbins"]
+    calculate_lineup_points(my_lineup, year=2025, week=5)
 
 # %%
