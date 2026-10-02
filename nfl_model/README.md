@@ -46,9 +46,14 @@ All lines are **home-perspective** (negative = home favored).
 3. Copy the ELWAY projection table, then `pbpaste | python3 import_elway.py <week>`.
    Saves the paste to `data/elway/` and fills `elway_line` / `elway_total` /
    `elway_home_wp`. (`python3 import_elway.py <week>` re-imports the saved paste.)
-4. `python3 pool.py <week>` → ranked card, top 5 plus the bench, then the
-   ELWAY view: its lean on every game vs your line, flagged `agrees` /
-   `DISAGREES` against the card.
+4. `python3 pool.py <week>` → ranked card, top 5 plus the bench, then:
+   - **FACTORS**: for every pick, what sets its WIN% (line value × spread-band
+     weight → base rate, plus the ELWAY tilt) and, as context only, the
+     key-number value of your line (KEY%), line movement since the open,
+     ticket/money splits, the sharp side and ELWAY's gap. The context columns
+     don't change WIN%: none of them beat the closing line when tested.
+   - the ELWAY view: its lean on every game vs your line, flagged `agrees` /
+     `DISAGREES` against the card.
    (`python3 sample_week.py <week>` shows the plain PLAY/lean/PASS view.)
 5. Submit, then log it: `python3 log_week.py submit <week> --picks A,B,C,D,E`.
    This snapshots every game's lines, signals and ELWAY numbers into
