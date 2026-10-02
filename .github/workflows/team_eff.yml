@@ -2,17 +2,20 @@ name: Generate Team Efficiency Plots
 
 on:
   workflow_dispatch:
+  # The script picks the latest season with games, so this needs no yearly change.
   schedule:
-    - cron: '0 7 1 * *'  # every morning 7 AM UTC
+    - cron: '0 7 1 * *'  # 7 AM UTC on the 1st of each month
 
 jobs:
   Generate-Team-Plots:
     name: Run Efficiency Plot for Each NBA Team
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v3  
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -23,41 +26,42 @@ jobs:
         run: sudo apt-get update && sudo apt-get -y install libcurl4-openssl-dev libssl-dev libxml2-dev
         shell: bash
 
-      - name: Cache CRAN packages
-        uses: actions/cache@v3 
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
-          restore-keys: ${{ runner.os }}-r-
-          
+      # No separate actions/cache step: keyed on a DESCRIPTION file that doesn't
+      # exist, it restored packages compiled for an older R ("undefined symbol:
+      # SETLENGTH" in htmltools.so). setup-r-dependencies caches per R version.
       - name: Install CRAN packages
         uses: r-lib/actions/setup-r-dependencies@v2
         with: 
           packages: tidyverse, hoopR, janitor, ggrepel, jsonlite, ggimage, rvest, progressr, purrr
 
+      # Each team runs in its own R process; a failure no longer disappears
+      # into a warning. The step fails (after trying every team) if any did.
       - name: Run Team Efficiency Script for All Teams
         working-directory: nba
         run: |
           Rscript -e "
-          library(purrr);
           teams <- c('ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW',
                      'HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK',
                      'OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WSH');
-          walk(teams, function(t) {
+          failed <- character(0);
+          for (t in teams) {
             message('Running efficiency plot for ', t);
-            system(paste('Rscript team_eff_plots.r', t), intern = TRUE);
-          })
+            if (system2('Rscript', c('team_eff_plots.r', t)) != 0) failed <- c(failed, t);
+          };
+          if (length(failed)) {
+            message('::error::', length(failed), ' of ', length(teams), ' teams failed: ', paste(failed, collapse = ', '));
+            quit(status = 1);
+          }
           "
 
-      - name: Commit generated plots
-        working-directory: nba
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add plots/*.png
-          git diff --cached --quiet || git commit -m 'Auto-update: team efficiency plots'
-
-      - name: Push changes
-        run: git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Plots are attached to the run as a downloadable artifact (kept 90 days),
+      # even if some teams failed. Not committed: ~7 MB of PNGs per run would
+      # pile up in the repo's history.
+      - name: Upload plots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-efficiency-plots
+          path: nba/plots/*.png
+          if-no-files-found: warn
+          retention-days: 90

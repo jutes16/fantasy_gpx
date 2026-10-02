@@ -5,82 +5,58 @@ new_packages <- required_packages[!(required_packages %in% installed.packages()[
 if(length(new_packages)) install.packages(new_packages)
 lapply(required_packages, require, character.only = TRUE)
 
-# Load NBA game data for the  season
-season_year <- 2024
-# Choose the team to plot (by NBA 3-letter abbreviation)
-team_input <- "UTA"  # NBA 3-letter abbreviation (e.g., "UTA")
-team_input_2 <- "CLE"  # e.g., "BOS" or NULL optional parameter to compare two teams ---
+# Folder this script lives in (so it works from the repo root or from nba/)
+script_dir <- local({
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE))
+  if (length(f)) dirname(normalizePath(f[1])) else getwd()
+})
 
+# Season to plot, as hoopR numbers it: the year the season ENDS
+# (2026 = the 2025-26 season). By default, the most recent season that has
+# regular-season games, so it moves to 2026-27 on its own once games are
+# played. Override with NBA_SEASON, e.g. NBA_SEASON=2025 Rscript team_eff_plots.r OKC
+latest_season_with_games <- function() {
+  newest <- hoopR::most_recent_nba_season()
+  for (s in c(newest, newest - 1, newest - 2)) {
+    tb <- tryCatch(suppressMessages(hoopR::load_nba_team_box(s)), error = function(e) NULL)
+    if (!is.null(tb) && nrow(tb) > 0 && any(tb$season_type == 2)) return(s)
+  }
+  stop("no regular-season box scores found for ", newest, " or the two seasons before")
+}
+season_year <- if (nzchar(Sys.getenv("NBA_SEASON"))) {
+  as.integer(Sys.getenv("NBA_SEASON"))
+} else {
+  latest_season_with_games()
+}
+message("Season: ", season_year - 1, "-", substr(season_year, 3, 4))
+
+# Teams: Rscript team_eff_plots.r UTA [CLE]  (second team optional)
+team_input <- "UTA"   # NBA 3-letter abbreviation
+team_input_2 <- NULL  # e.g. "BOS" to compare two teams, NULL for one
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) >= 1) {
-  team_input <- args[1]
-}
+if (length(args) >= 1) team_input <- args[1]
+if (length(args) >= 2) team_input_2 <- args[2]
 
-# --- New optional parameters to filter data by game segment ---
-# Set these to restrict data to a subset of games within the season.
-# For example, to analyze the last 15 games, set last_n_games <- 15.
-# If left NULL, data for the full season will be loaded.
-game_segment_start <- NULL  # e.g., "2024-02-01" or NULL for no start date filter
-game_segment_end <- NULL    # e.g., "2024-03-15" or NULL for no end date filter
-last_n_games <- NULL       # e.g., 15 for last 15 games, or NULL to ignore
+# --- Optional filters to a subset of games within the season ---
+game_segment_start <- NULL  # e.g. "2026-02-01", or NULL for no start filter
+game_segment_end <- NULL    # e.g. "2026-03-15", or NULL for no end filter
+last_n_games <- NULL        # e.g. 15 for each team's last 15 games, or NULL
+min_minutes <- 100          # hide players below this many minutes (tiny samples)
 
-# Load datra
-nba_team_box <- hoopR::load_nba_team_box(season_year)
-nba_player_box <- hoopR::load_nba_player_box(season_year)
+# --- Ratings from hoopR box scores (box_ratings.r) ---
+# Previously from stats.nba.com, which times out from GitHub's runners.
+# Team ratings match Basketball-Reference; player ratings are Dean Oliver's
+# box-score estimates (see box_ratings.r).
+source(file.path(script_dir, "box_ratings.r"))
+ratings <- box_ratings(season_year, date_from = game_segment_start,
+                       date_to = game_segment_end, last_n_games = last_n_games)
 
-# Load advanced player stats with optional filtering by date range or last n games
-if (!is.null(last_n_games)) {
-  adv_data <- nba_leaguedashplayerstats(
-    measure_type = "Advanced",
-    season = season_year,
-    last_n_games = last_n_games
-  )
-} else {
-  adv_data <- nba_leaguedashplayerstats(
-    measure_type = "Advanced",
-    season = season_year,
-    date_from = game_segment_start,
-    date_to = game_segment_end
-  )
-}
-adv_data <- adv_data$LeagueDashPlayerStats %>% janitor::clean_names()
+adv_data <- ratings$players %>%
+  filter(min >= min_minutes) %>%
+  mutate(net_rtg = net_rating)          # usg_pct is already on a 0-100 scale
 
-# Convert key numeric columns
-adv_data <- adv_data %>%
-  mutate(
-    off_rating = as.numeric(off_rating),
-    def_rating = as.numeric(def_rating),
-    usg_pct = suppressWarnings(as.numeric(usg_pct)) * 100, # rescale to 0-100
-    min = suppressWarnings(as.numeric(min)),
-    net_rtg = suppressWarnings(as.numeric(net_rating))
-  )
-
-# Load advanced team stats with optional filtering by date range or last n games
-if (!is.null(last_n_games)) {
-  team_dash <- nba_leaguedashteamstats(
-    season     = season_year,
-    season_type = "Regular Season",
-    measure_type = "Advanced",
-    last_n_games = last_n_games
-  )
-} else {
-  team_dash <- nba_leaguedashteamstats(
-    season     = season_year,
-    season_type = "Regular Season",
-    measure_type = "Advanced",
-    date_from = game_segment_start,
-    date_to = game_segment_end
-  )
-}
-
-# Clean team dashboard and coerce ratings to numeric
-team_dash_clean <- team_dash$LeagueDashTeamStats %>%
-  janitor::clean_names() %>%
-  mutate(
-    off_rating = suppressWarnings(as.numeric(off_rating)),
-    def_rating = suppressWarnings(as.numeric(def_rating)),
-    team_name = stringr::str_trim(team_name)
-  )
+team_dash_clean <- ratings$teams %>%
+  mutate(team_name = stringr::str_trim(team_name))
 
 # --- Efficiency Landscape Plot for a Single Team or Two Teams ---
 
@@ -263,7 +239,10 @@ if (!is.null(team_input_2)) {
   max_range <- max(max_range, max_range_2)
 }
 range_limit <- ceiling(max_range * 10) / 10  # round up to nearest 0.1 for nicer axis limits
-range_limit <- 10 # fixed range for better comparability
+# Fixed range so every team's plot is on the same scale. Box-score player
+# ratings spread wider than the NBA's on-court ratings did: +/-10 hid a third
+# of players (incl. SGA at +17.5); +/-20 hides ~4% of minutes, mostly tiny samples.
+range_limit <- 20
 
 
 #
@@ -544,7 +523,7 @@ p <- p +
 
 #print(p)
 # --- Save Plot ---
-output_dir <- "nba/plots"
+output_dir <- file.path(script_dir, "plots")
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
 # Construct filename (e.g., "OKC_efficiency_landscape.png" or "OKC_vs_BOS_efficiency_landscape.png")
