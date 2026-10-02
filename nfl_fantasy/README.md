@@ -3,6 +3,7 @@
 | file | what it does |
 |---|---|
 | `fantasy_props.py` | Betting-market fantasy projections vs Sleeper's, from sportsbook player props |
+| `sleeper_lineup.py` | Optimal starting lineup and free-agent upgrades for each of your Sleeper leagues |
 | `weekly_stats.py` | Sleeper weekly stats and a lineup points calculator (`python3 weekly_stats.py` runs the examples) |
 
 ## Betting market vs Sleeper
@@ -40,3 +41,27 @@ repo). Props cost 1 credit per market per game: 6 markets × ~15 games ≈ 90 a
 week of the 500 free per month. Each game is saved under `data/props/` (git-
 ignored) and never paid for twice; games that have kicked off are skipped.
 The client is shared with `../nfl_bets/odds_api.py`.
+
+## Your Sleeper leagues: optimal lineup and free agents
+
+```
+python3 sleeper_lineup.py <sleeper username>
+python3 sleeper_lineup.py <username> --week 5
+python3 sleeper_lineup.py <username> --league "Dynasty"   # leagues whose name contains this
+```
+
+For every league you're in this season (Sleeper's public API, no login):
+- **Scoring:** every projection is scored with that league's own scoring
+  settings (reception points, bonuses, kicker and defense tiers). Checked: with
+  half-PPR settings it matches Sleeper's half-PPR projections to within 0.06 pts.
+- **Optimal lineup:** for the league's actual roster slots (FLEX, SUPER_FLEX,
+  REC_FLEX, ...), solved exactly; players who are Out / IR / suspended or on bye
+  are skipped. Shows the changes from your current lineup and warns if a
+  current starter won't play.
+- **Free agents, this week:** players whose addition raises your optimal
+  lineup's projected points.
+- **Free agents, rest of season:** players projecting 5+ more points from this
+  week through week 18 than your weakest player at their position.
+
+Projections and the player list are cached for the day under `data/sleeper/`
+(git-ignored).

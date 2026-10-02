@@ -33,3 +33,4 @@ __pycache__/
 # Raw sportsbook odds / player props from The Odds API (re-fetchable; keep out of the public repo)
 nfl_bets/data/odds/
 nfl_fantasy/data/props/
+nfl_fantasy/data/sleeper/
