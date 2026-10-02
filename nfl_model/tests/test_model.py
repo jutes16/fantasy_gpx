@@ -58,3 +58,28 @@ def test_parse_action_network_item():
     r = d.iloc[0]
     assert (r.an_line, r.an_open_line, r.an_home_bets_pct, r.an_home_money_pct) == (-7.5, -7.0, 60, 80)
     assert canon("LA") == "LAR"
+
+
+def test_factor_signals_are_from_the_picks_side():
+    from pool import _signals
+    g = dict(home="DEN", away="LAR", my_line=2.5, mkt_line=-1.5, open_line=3.0,
+             home_bets_pct=41.0, home_money_pct=61.0, sharp_side="home", sharp_type="book",
+             elway_line=-4.5)
+    h = _signals(g, "home")          # picking DEN (home)
+    assert h["move"] == pytest.approx(4.5)        # market moved 4.5 toward DEN
+    assert (h["tix"], h["money"]) == (41.0, 61.0)
+    assert h["sharp"] == "with" and h["sharp_type"] == "book"
+    assert h["elway"] == pytest.approx(7.0)       # ELWAY likes DEN 7 pts more than your line
+    a = _signals(g, "away")          # same game, picking LAR
+    assert a["move"] == pytest.approx(-4.5)
+    assert (a["tix"], a["money"]) == (59.0, 39.0)
+    assert a["sharp"] == "AGAINST"
+    assert a["elway"] == pytest.approx(-7.0)
+    assert _signals(dict(home="A", away="B", my_line=1.0, mkt_line=1.0), "home")["sharp"] is None
+
+
+def test_score_game_reports_its_components():
+    s = score_game(dict(away="LAR", home="DEN", my_line=2.5, mkt_line=-1.5,
+                        proj_margin=4.5, proj_weight=0.5))
+    assert s["win_rate"] == pytest.approx(s["base_rate"] + s["proj_adj"], abs=1e-4)
+    assert s["proj_adj"] > 0

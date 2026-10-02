@@ -76,6 +76,7 @@ def score_game(g: dict) -> dict:
     mult = band_multiplier(mkt)
     eff = raw * mult
     rate = _interp(eff)
+    base_rate = rate
 
     # Optional projection tilt. Capped hard: projections are NOT
     # validated by the backtest, and pass a credibility weight in
@@ -85,6 +86,7 @@ def score_game(g: dict) -> dict:
         pcov = (pm + my) if side == "home" else (-pm - my)
         rate += float(np.clip(pcov * 0.004 * pw, -0.02, 0.02))
 
+    proj_adj = rate - base_rate
     rate = float(np.clip(rate, 0.30, 0.70))
     team = g["home"] if side == "home" else g["away"]
     num = my if side == "home" else -my
@@ -107,6 +109,8 @@ def score_game(g: dict) -> dict:
         band_mult=mult,
         eff_pts=round(eff, 2),
         win_rate=round(rate, 4),
+        base_rate=round(base_rate, 4),
+        proj_adj=round(proj_adj, 4),
         tier=tier,
         is_thursday=bool(g.get("is_thursday", False)),
     )
@@ -232,6 +236,66 @@ def fmt(res: dict, show_bench: bool = True) -> str:
     return "\n".join(L)
 
 
+def _signals(g, side):
+    """Context signals for one pick, from the pick's side. None when not recorded.
+
+    move  : points the market moved toward your team since the open
+    tix/$ : % of tickets / money on your team
+    elway : points ELWAY's projection favours your team over your line
+    """
+    home = side == "home"
+    num = lambda k: (None if g.get(k) is None or (isinstance(g.get(k), float) and np.isnan(g[k]))
+                     else float(g[k]))
+    out = {}
+    o, m = num("open_line"), num("mkt_line")
+    out["move"] = None if o is None else ((o - m) if home else (m - o))
+    b, d = num("home_bets_pct"), num("home_money_pct")
+    out["tix"] = None if b is None else (b if home else 100 - b)
+    out["money"] = None if d is None else (d if home else 100 - d)
+    sh = str(g.get("sharp_side") or "").strip().lower()
+    out["sharp"] = None if sh not in ("home", "away") else ("with" if sh == side else "AGAINST")
+    st = str(g.get("sharp_type") or "").strip().lower()
+    out["sharp_type"] = st if st in ("book", "pro") else ""
+    e = num("elway_line")
+    out["elway"] = None if e is None else ((float(g["my_line"]) - e) if home else (e - float(g["my_line"])))
+    return out
+
+
+def factors_view(games, res):
+    """What goes into each pick's win %, and what else is known about it."""
+    try:
+        from margins import clv_prob          # key-number value of your line vs the market
+    except Exception:                         # games_clean.csv missing: skip that column
+        clv_prob = None
+    by_game = {f"{g['away']} @ {g['home']}": g for g in games}
+    rows = [(r, True) for r in res["card"]] + [(r, False) for r in res["bench"]]
+
+    f = lambda v, spec, dash="-": dash if v is None else format(v, spec)
+    L = ["", "FACTORS  (card first, then the bench)",
+         "  sets WIN%:  VAL = your line vs market (pts) x BAND (spread-band weight) -> BASE%,",
+         "              + ELWAY = projection tilt (capped +/-2 pts)",
+         "  context only (tested, no edge at the close; not in WIN%):",
+         "              KEY% = VAL as cover probability (key numbers counted), MOVE = market",
+         "              move toward your team since the open, TIX/$ = % of tickets / money on",
+         "              your team, SHARP = reported sharp side, ELWAY GAP = pts ELWAY likes your",
+         "              team more than your line",
+         f"{'':2}{'GAME':<12}{'PICK':<11}{'VAL':>5}{'BAND':>6}{'BASE%':>7}{'ELWAY':>7}{'WIN%':>7}"
+         f" |{'KEY%':>6}{'MOVE':>6}{'TIX/$':>9}{'SHARP':>12}{'ELWAY GAP':>10}"]
+    for r, on_card in rows:
+        g = by_game[r["game"]]
+        s = _signals(g, r["side"])
+        key = clv_prob(r["my_line"], r["side"], r["mkt_line"]) * 100 if clv_prob else None
+        split = "-" if s["tix"] is None else f"{s['tix']:.0f}/{f(s['money'], '.0f')}"
+        sharp = "-" if s["sharp"] is None else s["sharp"] + (f" ({s['sharp_type']})" if s["sharp_type"] else "")
+        L.append(
+            f"{'*' if on_card else ' ':<2}{r['game']:<12}{r['pick']:<11}{r['pts_value']:>+5.1f}"
+            f"{r['band_mult']:>5.2f}x{r['base_rate']*100:>6.1f}%{r['proj_adj']*100:>+6.1f}"
+            f"{r['win_rate']*100:>6.1f}% |{f(key, '+5.1f'):>6}{f(s['move'], '+5.1f'):>6}"
+            f"{split:>9}{sharp:>12}{f(s['elway'], '+5.1f'):>10}")
+    L.append("  * = on the card.  ELWAY column is in win-% points; KEY% in cover-% points.")
+    return "\n".join(L)
+
+
 # ELWAY (import_elway.py) feeds the projection tilt in score_game. The tilt is
 # capped at +/-2 pp whatever the weight, so line value still drives the card.
 # 0 = show ELWAY but ignore it; 1 = full tilt. Raise it only if the ELWAY
@@ -274,6 +338,7 @@ if __name__ == "__main__":
             g["proj_weight"] = ELWAY_WEIGHT
     res = best_five(games)
     print(fmt(res))
+    print(factors_view(games, res))
     print(elway_view(games, res))
 
     warn = thursday_check(res)
