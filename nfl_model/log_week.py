@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
+from margins import clv_prob
 from pool import best_five, score_game
 from sample_week import SIGNAL_COLS
 
@@ -250,12 +251,20 @@ def clv():
     # how far the market moved after you locked
     df["move"] = df.closing_line - df.mkt_line_at_submit
     # value you thought you had vs what you actually had at the close
+    # lines are home-perspective: a higher number = more points for home, so
+    # home value = pool - close and away value = close - pool
     df["val_at_close"] = np.where(
         df.side == "home",
-        df.closing_line - df.pool_line,
         df.pool_line - df.closing_line,
+        df.closing_line - df.pool_line,
     )
     df["val_lost"] = df.val_at_close - df.pts_value_at_submit
+    # the same in cover probability, so a half point through 3 or 7 counts
+    # for what it's worth (margins.py)
+    df["prob_at_submit"] = [clv_prob(l, s, m) for l, s, m in
+                            zip(df.pool_line, df.side, df.mkt_line_at_submit)]
+    df["prob_at_close"] = [clv_prob(l, s, c) for l, s, c in
+                           zip(df.pool_line, df.side, df.closing_line)]
 
     print("=" * 66)
     print("SUBMISSION-TIME LINE vs CLOSE")
@@ -269,6 +278,10 @@ def clv():
     print(f"  at submit : {df.pts_value_at_submit.mean():+.2f} pts")
     print(f"  at close  : {df.val_at_close.mean():+.2f} pts")
     print(f"  drift     : {df.val_lost.mean():+.2f} pts")
+    print(f"\n  in cover probability (key numbers counted):")
+    print(f"  at submit : {df.prob_at_submit.mean()*100:+.1f}%")
+    print(f"  at close  : {df.prob_at_close.mean()*100:+.1f}%")
+    print(f"  drift     : {(df.prob_at_close - df.prob_at_submit).mean()*100:+.1f}%")
     if df.val_lost.mean() > 0.1:
         print("  -> the market moved TOWARD your sheet. Submitting earlier")
         print("     would have shown less value than you actually got.")
