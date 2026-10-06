@@ -37,15 +37,15 @@ To use the same numbers in the pool: from `../nfl_model`,
 
 **2. Price and log.**
 ```
-python3 bets.py sheet 4 --log
+python3 bets.py sheet 4
 ```
 Pulls fresh Kalshi prices (public API, no key) and nflverse sportsbook prices,
 prints the sheet, and appends every flagged bet to `data/bet_log.csv` as a new
 **batch**, with the best one per game marked `recommended`. Games that have
-kicked off are skipped. `python3 bets.py sheet 4` (without `--log`) just prints.
+kicked off are skipped. `python3 bets.py sheet 4 --no-log` just prints.
 
 **When ELWAY updates, repeat steps 1 and 2** — but only for an update you would
-have acted on. Each `--log` adds a batch; earlier batches are never changed.
+have acted on. Each logged run adds a batch; earlier batches are never changed.
 A new batch is refused if ELWAY's inputs are identical to the last batch's
 (re-logging at new prices alone would just move the test's entry point);
 `--force` overrides that.
