@@ -18,10 +18,10 @@ reminds you (see the bottom of this file).
 | when | folder | step |
 |---|---|---|
 | 10:06 am ⏰ | `nfl_bets` | Open ELWAY's page in the built-in browser and ask Claude to pull the week's margin distribution |
-| after that | `nfl_bets` | `python3 bets.py sheet <wk> --log` |
+| after that | `nfl_bets` | `python3 bets.py sheet <wk>` (logs by default) |
 | after that | `nfl_model` | `cat ../nfl_bets/data/elway/2026_wk<NN>.txt \| python3 import_elway.py <wk>` |
 | when the pool sheet is out | `nfl_model` | `python3 update_mkt.py <wk> --add`, then enter `my_line` in `data/weekly_lines.xlsx` |
-| if ELWAY updates later | `nfl_bets`, `nfl_model` | Repeat the pull, `sheet --log` and `import_elway` (only if you'd have acted on the update) |
+| if ELWAY updates later | `nfl_bets`, `nfl_model` | Repeat the pull, `sheet` and `import_elway` (only if you'd have acted on the update) |
 
 ## Thursday: TNF
 

@@ -6,9 +6,10 @@ Weekly:
                                           one already imported for the pool)
     python3 bets.py sheet 4               pull Kalshi + sportsbook prices, price
                                           every bet against ELWAY, print the sheet
-    python3 bets.py sheet 4 --log         ...and log the bets as a new batch
+                                          and log the bets as a new batch
                                           (pre-kickoff only; refused if ELWAY
                                           hasn't changed since the last batch)
+    python3 bets.py sheet 4 --no-log      ...print only, log nothing
     python3 kalshi.py 4                   another snapshot right before kickoff
                                           (becomes the "close" for CLV)
     python3 bets.py grade 4               after the games
@@ -259,7 +260,7 @@ def describe(b):
     return ""
 
 
-def sheet(week, min_ev=0.05, fetch=True, log=False, force=False, books=False):
+def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False):
     book_df = None
     if books:                       # best price across sportsbooks (odds_api.py)
         import odds_api
@@ -525,7 +526,7 @@ if __name__ == "__main__":
     cmd = a[0]
     opt = lambda k, d: float(a[a.index(k) + 1]) if k in a else d
     if cmd == "sheet":
-        sheet(int(a[1]), min_ev=opt("--min-ev", 0.05), fetch="--no-fetch" not in a, log="--log" in a,
+        sheet(int(a[1]), min_ev=opt("--min-ev", 0.05), fetch="--no-fetch" not in a, log="--no-log" not in a,
               force="--force" in a, books="--books" in a)
     elif cmd == "grade":
         grade(int(a[1]))
