@@ -395,8 +395,9 @@ def report(log=None, title="ALL WEEKS"):
     print(_row("  PROJ overs / yes", log[log.proj & log.side.isin(["over", "yes"])]))
     print(_row("  PROJ unders / no", log[log.proj & log.side.isin(["under", "no"])]))
     print(_row("SHOP and PROJ", log[log.shop & log.proj]))
-    print("\n  Sleeper edge (P slp - P mkt), every side Sleeper projects:")
-    e = log[log.edge.notna()]
+    # each prop once (over / yes side): the under's edge is the over's, negated
+    print("\n  Sleeper edge on the over / yes (P slp - P mkt), each prop once:")
+    e = log[log.edge.notna() & log.side.isin(["over", "yes"])]
     for lo, hi in [(-1, -0.08), (-0.08, -0.03), (-0.03, 0.03), (0.03, 0.08), (0.08, 1)]:
         print(_row(f"    {lo:+.0%} to {hi:+.0%}" if abs(lo) < 1 and abs(hi) < 1 else
                    (f"    below {hi:+.0%}" if lo == -1 else f"    {lo:+.0%} and up"),
@@ -457,7 +458,7 @@ def dashboard():
             weekly.append(dict(week=int(wk), signal=sig, **st, cum_units=round(cum, 2)))
     out["weekly"] = weekly
 
-    e = g[g.edge.notna()]
+    e = g[g.edge.notna() & over]                 # each prop once: the under's edge mirrors the over's
     cuts = [(-1, -0.08, "below −8"), (-0.08, -0.03, "−8 to −3"), (-0.03, 0.03, "−3 to +3"),
             (0.03, 0.08, "+3 to +8"), (0.08, 1, "+8 and up")]
     out["edge_buckets"] = [dict(bucket=lab, order=i, **_stats(e[(e.edge >= lo) & (e.edge < hi)]))

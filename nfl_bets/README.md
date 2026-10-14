@@ -125,10 +125,8 @@ logs, games before the prop's week only) are logged with every side as context:
 They feed no signal. The report tests them on the over / yes side only, each
 prop once: both sides are logged, and an over that hit in 7 of 8 games is an
 under that hit in 1, so counting both would mirror every result (that error
-made week 4 look like 55% vs 52%). **Week 4, one row per prop, priced against
-the market and clustered by game:** recent form z = 1.24 (p = 0.22), matchup
-z = 0.80 (p = 0.42). Right direction, not distinguishable from noise, and the
-form buckets aren't in order (40-60% did best). Books set lines knowing both.
+made week 4 look like 55% vs 52%). The Sleeper-edge buckets count each prop
+once for the same reason (the under's edge is the over's, negated).
 
 `report` shows every side, overs vs unders, SHOP, PROJ, Sleeper's edge in
 buckets, recent form and matchup buckets, and PROJ by market, each as W-L, win % vs the market's fair
@@ -149,13 +147,24 @@ flags (searchable, with each player's last-8 hit rate and the matchup) and the
 `python3 props.py dashboard` and ask Claude to upload the files to the
 dashboard.
 
-**Week 4 (backfilled from props and Sleeper projections saved Oct 2):** 796
-graded sides went 49.9% against a fair 50.2%, so the market's prices were
-calibrated. Best price across books lost 2.7% (vs ~4.5% vig at one book).
-PROJ went 61-65 (48.4% vs 50.7% fair, −6.4%); SHOP went 3-10. PROJ leans to
-unders (39 overs, 87 unders), mostly receptions, where Sleeper projected 7% below
-the market (and players beat both). One week is noise: no edge in either
-signal yet.
+**Weeks 4-5** (both backfilled from props and Sleeper projections saved before
+kickoff: week 4 on Oct 2, week 5 at 12:58 on Oct 11, so week 5 has no Thursday
+game): 1,529 graded sides went 49.6% against a fair 49.7%, so the market's
+prices are calibrated. Best price across books lost 2.1% (vs ~4.5% vig at one
+book). PROJ is 130-118 (52.4% vs 50.4% fair, +1.7%); SHOP 38-46 (45.2% vs 42.3%,
++20.9% on 84 bets, mostly plus-money). One row per prop, priced against the
+market, clustered by game (28 games):
+
+| feature | z | p |
+|---|---|---|
+| Sleeper edge | +0.76 | 0.45 |
+| recent form (last-8 hit rate) | +0.77 | 0.44 |
+| matchup (opponent allowance) | +2.19 | 0.029 |
+
+Only the matchup shows anything, and it misses the three-test threshold
+(p < 0.017). It pointed the same way both weeks, and week 5 is out of sample
+(the feature was written on Oct 10, before those games). Watch it; don't act on
+it.
 
 ## Reading the sheet
 
