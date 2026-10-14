@@ -1,9 +1,12 @@
-# nfl/ — fantasy tools
+# nfl_fantasy/ — fantasy tools
 
 | file | what it does |
 |---|---|
 | `fantasy_props.py` | Betting-market fantasy projections vs Sleeper's, from sportsbook player props |
 | `sleeper_lineup.py` | Optimal starting lineup and free-agent upgrades for each of your Sleeper leagues |
+| `prop_shapes.py` | Measures how player stats vary game to game (nflverse logs), for converting prop lines to means; writes `data/prop_shapes.json` |
+| `shapes.py` | Prop line ↔ mean conversions using those shapes (shared with `../nfl_bets/props.py`) |
+| `history.py` | A prop's player history (last-8 hit rate at the line, averages) and matchup (what the opponent allows his position), games before the prop's week only |
 | `weekly_stats.py` | Sleeper weekly stats and a lineup points calculator (`python3 weekly_stats.py` runs the examples) |
 
 ## Betting market vs Sleeper
@@ -23,18 +26,30 @@ left out of both). Output: the biggest disagreements per position, with each
 stat as market / Sleeper, and Sleeper's injury status; full table saved to
 `data/props/<season>_wk<NN>_vs_sleeper.csv`.
 
-How a prop becomes a projection:
-- **Yards:** a prop line is a median; Sleeper projects means. The line is nudged
-  by the de-vigged over price, then converted with the mean / median ratio
-  measured from nflverse game logs (2023-24): passing 0.99, rushing 1.05,
-  **QB rushing 1.18** (scrambles make it burstier), receiving 1.10.
-- **Receptions, passing TDs:** Poisson mean matching P(over).
-- **Anytime TD:** expected TDs = −ln(1 − P(scores)).
+How a prop becomes a projection (`shapes.py`, measured by `prop_shapes.py`):
+- **Yards:** a prop line is a median; Sleeper projects means. The gap depends
+  on volume, so `prop_shapes.py` measures the whole game-to-game distribution
+  (game ÷ the player's average over his other games that season) in volume
+  bands, from nflverse game logs 2022-24. A 15.5 receiving line implies a mean
+  ~1.25× the line, a 65.5 line ~1.1×; low-volume rushing is burstier still.
+  The mean is the one that puts the de-vigged P(over) above the line.
+- **Receptions, passing TDs:** count distributions with the measured
+  dispersion: receptions vary more than Poisson (1.19), passing TDs less (0.79).
+- **Anytime TD:** expected TDs = −ln(1 − P(scores)) (Poisson; the measured
+  dispersion predicted zero-TD games worse than Poisson did).
 
-Check: across week 4 the market and Sleeper agree on average at every position
-(mean gap within ±0.1 pts), so the gaps it flags are player-specific, not a
-built-in tilt. They are start/sit and DFS leads, not certainties: props carry
-more vig and less liquidity than game lines.
+Checked on 2025 (not used in the fit): at the lines each shape puts at its
+25th / 50th / 75th percentile, players went over 75 / 54 / 32% (receiving,
+10-20 yd band; target 75 / 50 / 25) where the old single ratios gave 60 / 45 /
+36. Re-run `python3 prop_shapes.py` to refit and see the full check (downloads
+the game logs to `data/nflverse/`, git-ignored).
+
+Check: in week 4, after conversion, Sleeper's average sat within 1-3% of the
+market's for yardage (before, receiving yards ran ~10% apart from the
+mean/median mismatch alone). Receptions are the exception: Sleeper projected
+7% below the market, and players beat both. The gaps it flags are start/sit and
+DFS leads, not certainties: props carry more vig and less liquidity than game
+lines.
 
 **Credits:** needs `ODDS_API_KEY` in your environment (`~/.zshrc`; never in the
 repo). Props cost 1 credit per market per game: 6 markets × ~15 games ≈ 90 a

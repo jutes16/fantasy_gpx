@@ -70,6 +70,102 @@ python3 bets.py grade 4
 python3 bets.py report
 ```
 
+## Player props: over or under?
+
+A second paper test, separate from ELWAY: do Sleeper's projections, or simply
+shopping six books, beat the player-prop market?
+
+```
+python3 props.py sheet 5            # Sunday morning: props + Sleeper -> sheet, logged
+python3 props.py sheet 5 --cached   # re-use props already saved by fantasy_props.py (no credits)
+python3 props.py grade 5            # Tuesday: results from Sleeper's box scores
+python3 props.py report
+python3 props.py dashboard          # the dashboard's data -> data/dashboard/*.json
+```
+
+Props (passing / rushing / receiving yards, receptions, passing TDs, anytime
+TD) come from The Odds API through `../nfl_fantasy/fantasy_props.py`, sharing
+its saved files, so the Sunday fetch is paid for once (~90 credits). Each
+book's line and de-vigged price becomes an implied mean; the market's fair mean
+is the median across books. Every side is priced at the **best offer across
+books**, with two signals:
+
+- **SHOP**: the best offer is worth 3%+ against the *other* books' fair price
+  (an outlier line or a stale price).
+- **PROJ**: Sleeper's projection gives the side 8+ points more probability than
+  the market's fair price. These are the "who goes over / under" picks.
+
+Probabilities use the shapes measured from nflverse game logs
+(`../nfl_fantasy/prop_shapes.py`): yards follow the measured game-to-game
+distribution for the line's volume band (a 15.5 receiving line implies a mean
+well above it, a 65.5 line barely); receptions and passing TDs use the measured
+dispersion; anytime TD is Poisson. Lines and Sleeper's means go through the
+same shapes, so a Sleeper mean equal to the market's reproduces the market's
+probability exactly (tested), and Sleeper's average vs the line's median gap
+is accounted for.
+
+**Scope**, fixed before any results: prices −250 to +250; yardage lines 15+
+(passing 150+), since a QB's 0.5 rushing yards or a backup's 6.5 receiving
+sit below the measured volume bands; no SHOP on anytime TD (no book quotes "No",
+so its fair price rests on an assumed vig). Every side in scope is logged, not
+only the flagged ones, so the report compares the signals with the rest. A
+player who doesn't play is void; a whole-number line can push.
+
+**Player history and matchup** (`../nfl_fantasy/history.py`, nflverse game
+logs, games before the prop's week only) are logged with every side as context:
+
+- `hit_rate`: share of the player's last 8 games (this season, then last
+  season's latest) that would have won this bet at this line; `l8_avg` and
+  `hist_avg` (2026 so far) beside it.
+- `opp_factor`: what the opponent has allowed per game this season to his
+  position for that stat, over the league average, pulled toward 1 by 4 games
+  of average defense (three or four games is mostly noise). Above 1 is soft for
+  an over.
+
+They feed no signal. The report tests them on the over / yes side only, each
+prop once: both sides are logged, and an over that hit in 7 of 8 games is an
+under that hit in 1, so counting both would mirror every result (that error
+made week 4 look like 55% vs 52%). The Sleeper-edge buckets count each prop
+once for the same reason (the under's edge is the over's, negated).
+
+`report` shows every side, overs vs unders, SHOP, PROJ, Sleeper's edge in
+buckets, recent form and matchup buckets, and PROJ by market, each as W-L, win % vs the market's fair
+probability, units and ROI (vig included). Read `win%` against `mkt P`;
+`EV slp` is only as good as Sleeper's projection.
+
+The sheet saves Sleeper's projections at log time
+(`../nfl_fantasy/data/props/<season>_wk<NN>_sleeper_at_log.csv`); `sheet --cached`
+on a week that has started uses that file, never today's projections, which
+Sleeper revises after the games (a player ruled out drops to zero).
+
+**Dashboard:** [Prop Bet Tracker](https://claude.ai/artifact/DFMxAvuerHEa3eiSxMfJqZ),
+a private claude.ai page: record by signal, results by Sleeper edge, by recent
+form and by matchup, units over the season, PROJ by market, the latest week's
+flags (searchable, with each player's last-8 hit rate and the matchup) and the
+2025 shape check. It reads uploaded copies of `data/dashboard/*.json`
+(git-ignored), so it doesn't update itself: after grading, run
+`python3 props.py dashboard` and ask Claude to upload the files to the
+dashboard.
+
+**Weeks 4-5** (both backfilled from props and Sleeper projections saved before
+kickoff: week 4 on Oct 2, week 5 at 12:58 on Oct 11, so week 5 has no Thursday
+game): 1,529 graded sides went 49.6% against a fair 49.7%, so the market's
+prices are calibrated. Best price across books lost 2.1% (vs ~4.5% vig at one
+book). PROJ is 130-118 (52.4% vs 50.4% fair, +1.7%); SHOP 38-46 (45.2% vs 42.3%,
++20.9% on 84 bets, mostly plus-money). One row per prop, priced against the
+market, clustered by game (28 games):
+
+| feature | z | p |
+|---|---|---|
+| Sleeper edge | +0.76 | 0.45 |
+| recent form (last-8 hit rate) | +0.77 | 0.44 |
+| matchup (opponent allowance) | +2.19 | 0.029 |
+
+Only the matchup shows anything, and it misses the three-test threshold
+(p < 0.017). It pointed the same way both weeks, and week 5 is out of sample
+(the feature was written on Oct 10, before those games). Watch it; don't act on
+it.
+
 ## Reading the sheet
 
 ```
@@ -160,8 +256,11 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 | `bets.py` | sheet, log, grade, report, ELWAY paste |
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
+| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report, dashboard data |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |
+| `data/prop_log.csv` | every logged prop side and its result (git-ignored: per-book Odds API prices) |
+| `data/dashboard/` | the dashboard's data, from `props.py dashboard` (git-ignored) |
 | `data/kalshi/` | timestamped Kalshi snapshots |
 | `data/odds/` | sportsbook odds snapshots (git-ignored) |
 | `data/elway/` | ELWAY tables and distributions (git-ignored: paywalled) |

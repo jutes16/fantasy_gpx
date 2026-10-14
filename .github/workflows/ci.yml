@@ -4,9 +4,9 @@ name: CI
 # Offline only: no API calls, no local-only / paywalled data.
 on:
   push:
-    paths: ["nfl_model/**", "nfl_bets/**", ".github/workflows/ci.yml"]
+    paths: ["nfl_model/**", "nfl_bets/**", "nfl_fantasy/**", ".github/workflows/ci.yml"]
   pull_request:
-    paths: ["nfl_model/**", "nfl_bets/**", ".github/workflows/ci.yml"]
+    paths: ["nfl_model/**", "nfl_bets/**", "nfl_fantasy/**", ".github/workflows/ci.yml"]
 
 jobs:
   test:
@@ -20,12 +20,12 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install pandas numpy scipy openpyxl pytest
+        run: pip install pandas numpy scipy openpyxl requests pytest
 
       - name: Compile every script (catches syntax errors)
-        run: python -m compileall -q nfl_model nfl_bets
+        run: python -m compileall -q nfl_model nfl_bets nfl_fantasy
 
-      - name: Test nfl_bets (prices, settlement, margin models)
+      - name: Test nfl_bets (prices, settlement, margin models, props)
         working-directory: nfl_bets
         run: python -m pytest -q tests
 

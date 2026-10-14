@@ -10,12 +10,14 @@ Sportsbook player props (The Odds API, via ../nfl_bets/odds_api.py; needs
 ODDS_API_KEY) are turned into an implied stat projection per player, then into
 fantasy points, and compared with Sleeper's projection on the SAME stats:
 
-  prop                 -> implied mean
-  pass / rush / rec yds  line ~ median, nudged by the de-vigged over price;
-                         mean = median x (mean/median measured from game logs:
-                         pass 0.99, rush 1.05 (QB rush 1.18), rec 1.10)
-  receptions, pass TDs   Poisson mean matching P(over the line)
-  anytime TD             P(scores) -> expected TDs = -ln(1 - P)
+  prop                 -> implied mean  (shapes.py; measured by prop_shapes.py)
+  pass / rush / rec yds  the mean whose measured game-to-game distribution puts
+                         the de-vigged P(over) above the line. The shape depends
+                         on volume: a 15.5 receiving line implies a mean ~1.5x
+                         the median, a 65.5 line ~1.1x
+  receptions, pass TDs   count distribution with the measured dispersion
+                         (receptions wider than Poisson, passing TDs narrower)
+  anytime TD             P(scores) -> expected TDs = -ln(1 - P)  (Poisson)
 
 Only stats the market prices are compared (e.g. no QB interceptions), so the
 "covered points" columns are apples to apples. Big gaps are where the betting
@@ -35,26 +37,17 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 import requests
-from scipy import optimize, stats
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "nfl_bets"))
 import odds_api                        # noqa: E402  (shared client; reads ODDS_API_KEY)
+import shapes                          # noqa: E402
 from common import SEASON, schedule   # noqa: E402
 from weekly_stats import _normalize_name   # noqa: E402
 
 PROPS_DIR = os.path.join(HERE, "data", "props")
 MARKETS = ["player_pass_yds", "player_pass_tds", "player_rush_yds",
            "player_reception_yds", "player_receptions", "player_anytime_td"]
-# Yardage shape, measured from nflverse weekly game logs (2023-24, players with
-# 8+ games and a starter's volume): game-to-game spread (sd / mean) and how far
-# the mean sits above the median (a prop line is a median; Sleeper projects means)
-YARD_FIT = {                    # market: (cv, mean / median)
-    "player_pass_yds": (0.33, 0.99),
-    "player_rush_yds": (0.53, 1.05),
-    "player_reception_yds": (0.62, 1.10),
-}
-QB_RUSH_FIT = (0.83, 1.18)      # QB rushing is far burstier (scrambles): measured separately
 STAT = {"player_pass_yds": "pass_yd", "player_pass_tds": "pass_td", "player_rush_yds": "rush_yd",
         "player_reception_yds": "rec_yd", "player_receptions": "rec", "player_anytime_td": "td"}
 YES_ONLY_VIG = 0.06                    # overround assumed when a book posts only "Yes"
@@ -134,17 +127,8 @@ def consensus(events):
 
 
 def implied_mean(market, line, p, qb=False):
-    p = float(np.clip(p, 0.02, 0.98))
-    if market == "player_anytime_td":
-        return -np.log(1 - p)                          # Poisson: P(>=1) = 1 - e^-lambda
-    if market in ("player_receptions", "player_pass_tds"):
-        k = np.floor(line)                             # over x.5 = at least k+1
-        f = lambda lam: (1 - stats.poisson.cdf(k, lam)) - p
-        return optimize.brentq(f, 1e-4, 60)
-    cv, ratio = QB_RUSH_FIT if (qb and market == "player_rush_yds") else YARD_FIT[market]
-    # the market's median: the line, nudged by how lopsided the de-vigged price is
-    median = line + cv * line * stats.norm.ppf(p)
-    return median * ratio                              # measured mean / median
+    """The projected mean implied by a line and its de-vigged P(over / yes)."""
+    return shapes.implied_mean(market, line, p, qb)
 
 
 # ------------------------------------------------------------------ sleeper
