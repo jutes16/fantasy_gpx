@@ -36,6 +36,7 @@ nfl_bets/data/prop_log.csv
 nfl_fantasy/data/props/
 nfl_fantasy/data/sleeper/
 nfl_fantasy/data/nflverse/
+nfl_fantasy/data/usage/
 
 # Fitted prop shapes (derived from public nflverse logs; needed by the tests)
 !nfl_fantasy/data/prop_shapes.json
