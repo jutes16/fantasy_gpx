@@ -7,6 +7,7 @@
 | `prop_shapes.py` | Measures how player stats vary game to game (nflverse logs), for converting prop lines to means; writes `data/prop_shapes.json` |
 | `shapes.py` | Prop line ↔ mean conversions using those shapes (shared with `../nfl_bets/props.py`) |
 | `history.py` | A prop's player history (last-8 hit rate at the line, averages) and matchup (what the opponent allows his position), games before the prop's week only |
+| `usage_trends.py` | Season target-share, RB touch-share and snap-share trends (recency-weighted) from nflverse box scores |
 | `weekly_stats.py` | Sleeper weekly stats and a lineup points calculator (`python3 weekly_stats.py` runs the examples) |
 
 ## Betting market vs Sleeper
@@ -56,6 +57,36 @@ repo). Props cost 1 credit per market per game: 6 markets × ~15 games ≈ 90 a
 week of the 500 free per month. Each game is saved under `data/props/` (git-
 ignored) and never paid for twice; games that have kicked off are skipped.
 The client is shared with `../nfl_bets/odds_api.py`.
+
+## Target and touch trends
+
+```
+python3 usage_trends.py                # leaders / risers / fallers
+python3 usage_trends.py --half-life 2  # weight recent weeks harder (default 3)
+python3 usage_trends.py --sleeper jg337 # also tag players by your Sleeper rosters (for the dashboard)
+```
+
+From nflverse box scores (every player's targets, carries and receptions) and
+snap counts. Share = targets / team pass attempts, or an RB's carries +
+receptions / team offensive snaps, summed with each week's weight halving every
+`--half-life` weeks back; beside it the plain season share, the last three
+games, the slope and the weighted snap share. Games a player missed are left
+out; games he played with no targets count as 0. Box-score and snap-count
+names are matched by team and week (nicknames like Bam / Zonovan Knight by
+last name); any left unmatched are printed. It also flags role changes (`<season>_signals.csv`): gaining or losing work
+(last 3 games vs before), a starter out (share in the games a top-2 teammate
+missed, when he's out now per Sleeper), and snap jumps. Half-PPR points
+(nflverse) sit beside each share, against what the player's usage is worth:
+his weighted targets (an RB's targets and carries at their own fitted rates)
+times his position's points per opportunity this season. 3+ games scoring well
+under that is flagged `buy_low`, well over it `sell_high` (mostly touchdowns;
+elite players sit above the line every year). Injuries come from Sleeper (status and
+body part now) and the nflverse weekly injury reports (practice participation,
+the reason for each missed game, games played while Questionable); each flagged
+change gets a line of context, such as a teammate who went out or came back
+during the player's last 3 games. Tables go to
+`data/usage/<season>_{weekly,targets_trends,touches_trends,signals,rosters}.csv`;
+they feed the [usage dashboard](https://claude.ai/artifact/2Yq3mXQwvqhfjdq95Bjf56).
 
 ## Your Sleeper leagues: optimal lineup and free agents
 
