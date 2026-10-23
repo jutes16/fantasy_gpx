@@ -314,7 +314,6 @@ before. The data repo is private because the props are per-book Odds API prices.
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
 | `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report |
 | `hq.py` | the Bet Tracker dashboard's data: both ledgers, results by filter, the upcoming week's sheets |
-| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report, dashboard data |
 | `snapshot.py` | the cloud's pre-kickoff snapshots: props, Sleeper projections, Kalshi (run by GitHub Actions in fantasy_gpx-data) |
 | `sync_data.py` | copies the cloud snapshots from the private data repo into this checkout |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |

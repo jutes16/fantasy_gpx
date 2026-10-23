@@ -38,10 +38,11 @@ reminds you (see the bottom of this file).
 | 10:06 am ⏰ | `nfl_model` | `python3 update_mkt.py <wk>`, then `python3 fetch_splits.py 2026 <wk> --to-workbook` (Apify), then `python3 pool.py <wk>` |
 | before 1:00 pm | `nfl_model` | Submit, then `python3 log_week.py submit <wk> --picks A,B,C,D,E` |
 | before 1:00 pm | `nfl_model` | Claude's picks, made in a **separate conversation**, then `python3 pool_tracker.py claude <wk> A,B,C,D,E` |
-| 10:31 am ⏰ | `nfl_fantasy` | `python3 fantasy_props.py <wk>` (Odds API, ~90 credits), then `python3 sleeper_lineup.py jg337` |
-| 10:31 am ⏰ | `nfl_bets` | `python3 props.py sheet <wk> --cached` (the props just fetched; no credits) |
+| from ~2.5 h before each kickoff ☁ | cloud | props bought, Sleeper projections saved, Kalshi snapshots (see Cloud snapshots below) |
+| 11:00 am ⏰ | `nfl_bets` | `python3 sync_data.py`, then `python3 props.py sheet <wk> --cached` (marks the week's PICKs) |
+| 11:00 am ⏰ | `nfl_fantasy` | `python3 fantasy_props.py <wk> --cached`, then `python3 sleeper_lineup.py jg337` |
 | after that | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it (the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS)'s Analysis tab: this week's props and game bets) |
-| 12:47 pm ⏰ | `nfl_bets` | `python3 kalshi.py <wk>` (closing snapshot for the Sunday games) |
+| 12:47 pm ⏰ | `nfl_bets` | `python3 kalshi.py <wk>` (extra closing snapshot; the cloud takes them too) |
 
 Close `weekly_lines.xlsx` in Excel before the Sunday 10:06 run: it writes to
 the workbook.
@@ -61,7 +62,7 @@ the regular season.
 | `nfl-wed-elway` | Wed 10:06 am | Reminder only (ELWAY pull, bet sheet, pool sheet) |
 | `nfl-thu-tnf-close` | Thu 7:52 pm | Runs `kalshi.py` |
 | `nfl-sun-pool` | Sun 10:06 am | Refreshes lines and splits, runs `pool.py`, reminds you to submit and log |
-| `nfl-sun-lineup` | Sun 10:31 am | Runs props, lineups and the props sheet, lists lineup changes and prop flags |
+| `nfl-sun-lineup` | Sun 11:00 am | Syncs the cloud's props, runs lineups and the props sheet, lists lineup changes and the week's prop picks |
 | `nfl-sun-close` | Sun 12:47 pm | Runs `kalshi.py` |
 
 Nothing scheduled submits picks, places bets or changes a Sleeper lineup:
