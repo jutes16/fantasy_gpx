@@ -53,6 +53,16 @@ from weekly_stats import _normalize_name    # noqa: E402
 LOG = os.path.join(DATA, "prop_log.csv")
 SHOP_EV = 0.03          # best offer beats the other books' fair price by 3%+
 PROJ_EDGE = 0.08        # Sleeper's P(side) is 8+ points above the market's fair P
+# PICK: the props you'd actually bet. From the PROJ flags, keep those where the
+# player's last 8 games beat this line on this side at least half the time and
+# the matchup favours the side (opponent allows at least the league average to
+# an over, at most to an under); no anytime TDs; then the PICK_MAX with the
+# biggest Sleeper edge in the week. Backtest on weeks 4-5 (the rules were chosen
+# on those same weeks, so treat it as a lead): all PROJ 52.4% vs the market's
+# 50.4%, +1.7%, 124 a week; these 15 a week 66.7% vs 52.2%, +23.9% (+4.0% and
+# +25.0% by week). Line shop (SHOP) is logged but not a pick: its profit was one
+# week of long shots (-23.9% in week 4, +10.6% in week 5).
+PICK_MAX = 15
 MIN_BOOKS = 3           # books quoting the player x market (SHOP needs 2+ others)
 # Scope: only lines and prices the probability shapes are good for. The yardage
 # shapes were measured on starters' volume, so tiny lines (a QB's 0.5 rushing
@@ -227,6 +237,11 @@ def print_sheet(d, week, top=15):
     print(f"PLAYER PROPS  week {week}   {d.player.nunique()} players, {len(d)} priced sides, "
           f"best offer across books")
     print("=" * 128)
+    if "pick" in d and d.pick.any():
+        print(f"\nPICKS: the {PICK_MAX} to bet (PROJ, recent form and matchup agree, no anytime TD; biggest edges)")
+        print(hdr)
+        for r in d[d.pick].sort_values("edge", ascending=False).itertuples():
+            print(line(r))
     print(f"\nPROJ: Sleeper's P(side) {PROJ_EDGE:.0%}+ above the market's fair P  (overs and unders)")
     print(hdr)
     for r in d[d.proj].sort_values("edge", ascending=False).head(top).itertuples():
@@ -247,8 +262,20 @@ def print_sheet(d, week, top=15):
 # ------------------------------------------------------------------ log
 COLS = ["week", "logged_at", "player", "key", "pos", "team", "game", "kickoff", "market", "side",
         "line", "book", "price", "books", "fair_mean", "p_fair", "slp_mean", "p_slp", "edge",
-        "ev_shop", "ev_slp", "shop", "proj", "injury", "hist_n", "hist_avg", "l8_avg", "hit_rate",
+        "ev_shop", "ev_slp", "shop", "proj", "pick", "injury", "hist_n", "hist_avg", "l8_avg", "hit_rate",
         "hit_l5", "hit_l10", "hit_season", "opp", "opp_factor", "opp_rank", "actual", "result", "units"]
+
+
+def mark_picks(d):
+    """The week's PICK flags (see PICK_MAX), ranked across every game of the week."""
+    over = d.side.isin(["over", "yes"])
+    fav = pd.Series(np.where(over, d.opp_factor, 1 / d.opp_factor), index=d.index)
+    proj = d.proj.astype(str).str.lower() == "true"
+    ok = proj & (d.hit_rate >= 0.5) & (fav >= 1) & (d.market != "player_anytime_td")
+    pick = pd.Series(False, index=d.index)
+    for _, idx in d[ok].groupby("week").groups.items():
+        pick[d.loc[idx].sort_values("edge", ascending=False).head(PICK_MAX).index] = True
+    return pick
 
 
 def write_log(d, week):
@@ -262,7 +289,9 @@ def write_log(d, week):
     old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame(columns=COLS)
     old = old.reindex(columns=COLS)
     keep = ~((old.week == week) & old.game.isin(d.game))
+    d["pick"] = False
     out = pd.concat([old[keep], d[COLS]], ignore_index=True)
+    out["pick"] = mark_picks(out)
     os.makedirs(DATA, exist_ok=True)
     out.to_csv(LOG, index=False)
     print(f"\nlogged {len(d)} sides for week {week} -> {os.path.relpath(LOG)}")
@@ -290,6 +319,8 @@ def sheet(week, cached=False, log=True, season=SEASON):
             save_snapshot(slp, set(off.player.map(_normalize_name)), week, season)
     d = build_sheet(off, slp)
     d = history.features(d, season, week)      # player history and matchup, games before this week only
+    d["week"] = week
+    d["pick"] = mark_picks(d)                  # re-marked across the whole week when logged
     print_sheet(d, week)
     if log:
         write_log(d, week)
@@ -395,6 +426,9 @@ def report(log=None, title="ALL WEEKS"):
     print(_row("  PROJ overs / yes", log[log.proj & log.side.isin(["over", "yes"])]))
     print(_row("  PROJ unders / no", log[log.proj & log.side.isin(["under", "no"])]))
     print(_row("SHOP and PROJ", log[log.shop & log.proj]))
+    if "pick" in log:
+        pk = log.pick.astype(str).str.lower() == "true"
+        print(_row(f"PICK (the {PICK_MAX} a week you'd bet)", log[pk]))
     # each prop once (over / yes side): the under's edge is the over's, negated
     print("\n  Sleeper edge on the over / yes (P slp - P mkt), each prop once:")
     e = log[log.edge.notna() & log.side.isin(["over", "yes"])]

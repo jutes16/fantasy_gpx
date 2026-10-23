@@ -108,6 +108,22 @@ books**, with two signals:
   (an outlier line or a stale price).
 - **PROJ**: Sleeper's projection gives the side 8+ points more probability than
   the market's fair price. These are the "who goes over / under" picks.
+- **PICK**: the props you'd actually bet, at most 15 a week. From the PROJ
+  flags, keep those where the player's last 8 games beat this line on this side
+  at least half the time and the matchup favours the side (the opponent allows
+  at least the league average to an over, at most to an under), drop anytime
+  TDs, then take the 15 biggest Sleeper edges in the week.
+
+**How PICK was chosen (weeks 4-5, the only graded weeks):** seven rules were
+listed first and each tested by week. Injuries barely mattered (3 of 248 PROJ
+flags carried a tag), and the biggest Sleeper edges did fine (7-3). Two held in
+both weeks: matchup agreeing (58.0% vs the market's 51.1%) and recent form
+agreeing (54.1% vs 51.1%). With both, no anytime TDs and the top 15 a week:
+20-10, 66.7% vs 52.2%, +23.9% (+4.0% and +25.0% by week), against all 248 PROJ
+flags at 52.4% vs 50.4%, +1.7%. The rules were picked on those same two weeks
+(z = 1.6), so this is a lead the coming weeks will test. Line shop (SHOP) stays
+logged but isn't a pick: its profit was one week of long shots (-23.9% in
+week 4, +10.6% in week 5).
 
 Probabilities use the shapes measured from nflverse game logs
 (`../nfl_fantasy/prop_shapes.py`): yards follow the measured game-to-game
@@ -259,18 +275,19 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 
 ## Bet Tracker dashboard
 
-[Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) is a private claude.ai dashboard over both paper tests
-(ELWAY's game bets and the props), with three tabs:
+[Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) is a private claude.ai dashboard over the bets you'd make:
+ELWAY's recommended game bet per game and the prop PICKs. Two tabs:
 
-- **Dashboard:** profit, wagers, win rate and ROI, the record, and running profit
-  or ROI by week. Filter by bet type (each ELWAY instrument, Sleeper picks, line
-  shop), all games or without PHI, flat or EV-scaled stakes, and last week / 4
-  weeks / season.
-- **Bets:** every bet, filterable by type, week and result, with search.
+- **Dashboard:** profit, wagers, win rate and ROI, the record, running profit
+  or ROI by week, and the bets themselves (filterable by week and result, with
+  search). Filter by bet type (each ELWAY instrument, prop picks), all games or
+  without PHI, flat or EV-scaled stakes, and last week / 4 weeks / season.
 - **Analysis:** the upcoming week's recommendations: the props sheet (pick,
   price, Sleeper vs market projection, rating, EV, the opponent's rank for the
   stat, injury tag, last-5 / last-10 / season hit rates) and ELWAY's game bets
   (recommended bet per game, price, ELWAY vs market probability, EV, stake).
+  Props open on the week's PICKs, each with the best price and the book
+  offering it; every flag is a click away.
 
 It reads uploaded copies of `data/dashboard_hq/*.json` (git-ignored), so it
 doesn't update itself: after a sheet or grading, run `python3 hq.py` and ask
