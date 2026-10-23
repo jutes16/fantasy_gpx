@@ -65,3 +65,18 @@ the regular season.
 
 Nothing scheduled submits picks, places bets or changes a Sleeper lineup:
 those stay with you.
+
+## Cloud snapshots (no laptop needed)
+
+The steps that must happen before kickoff and need no one there run in GitHub
+Actions, in the private repo [fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data),
+every 30 minutes on game days: for each game kicking off within 2.5 hours,
+`nfl_bets/snapshot.py` buys its player props once, saves Sleeper's projections for
+those players and takes a Kalshi snapshot (the last before kickoff is the close).
+They're saved to the private repo; before grading or the props sheet, run
+`python3 sync_data.py` from `nfl_bets/` to copy them in, then
+`python3 props.py sheet <wk> --cached`.
+
+Locally, don't fetch props (`fantasy_props.py <wk>` without `--cached`): a game
+bought locally isn't in the cloud's store and would be bought twice.
+

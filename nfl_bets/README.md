@@ -264,6 +264,18 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 - **Watch the underdog lean.** ELWAY has favoured underdogs most weeks; if
   it only wins in underdog-friendly seasons, it's a dog bet, not an edge.
 
+## Cloud snapshots
+
+`snapshot.py` runs in GitHub Actions in the private repo
+[fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data) every 30 minutes on
+game days, so the pre-kickoff data doesn't depend on a laptop being awake. For
+games kicking off within 2.5 hours it buys their props once (`fantasy_props.fetch_props`
+with `window`), saves Sleeper's projections for those players (the snapshot props
+are graded against) and takes a Kalshi snapshot. `python3 sync_data.py` copies
+everything into this checkout (cloning the data repo next to this one the first
+time); then `props.py sheet <wk> --cached`, `bets.py grade` and `hq.py` work as
+before. The data repo is private because the props are per-book Odds API prices.
+
 ## Files
 
 | file | contents |
@@ -272,6 +284,8 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
 | `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report, dashboard data |
+| `snapshot.py` | the cloud's pre-kickoff snapshots: props, Sleeper projections, Kalshi (run by GitHub Actions in fantasy_gpx-data) |
+| `sync_data.py` | copies the cloud snapshots from the private data repo into this checkout |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |
 | `data/prop_log.csv` | every logged prop side and its result (git-ignored: per-book Odds API prices) |
