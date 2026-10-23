@@ -78,3 +78,17 @@ season,week,submitted_at,game,away,home,pool_line,mkt_line_at_submit,closing_lin
 2026,5,2026-10-11T16:57:06+00:00,SF @ SEA,SF,SEA,-2.5,-3.0,-3.0,SEA -2.5,home,False,0.5,0.5339,slim,False,,,,W,L,-3.0,,-3.5,19.0,13.0,,,Action Network splits 2026-10-09T18:34,-3.0,46.5,0.576
 2026,5,2026-10-11T16:57:06+00:00,BAL @ ATL,BAL,ATL,-2.5,-3.5,-3.5,ATL -2.5,home,True,1.0,0.5451,EDGE,True,ATL -2.5,home,1.0,L,L,-7.0,,4.5,47.0,56.0,,,Action Network splits 2026-10-09T18:34,-2.5,46.5,0.571
 2026,5,2026-10-11T16:57:06+00:00,BUF @ LAR,BUF,LAR,-2.5,-3.0,-3.5,LAR -2.5,home,False,0.5,0.5339,slim,False,,,,W,L,-3.0,,-2.5,27.0,40.0,,,Action Network splits 2026-10-09T18:34,-3.0,53.0,0.575
+2026,6,2026-10-19T01:34:01+00:00,SEA @ DEN,SEA,DEN,2.5,2.5,2.5,DEN +2.5,home,False,0.0,0.5,coin flip,False,,,,L,W,3.0,,2.0,41.0,38.0,,,Action Network splits 2026-10-18T13:59,1.0,41.0,0.476
+2026,6,2026-10-19T01:34:01+00:00,HOU @ JAX,HOU,JAX,-3.5,-2.5,-2.5,HOU +3.5,away,True,1.0,0.5611,EDGE,False,,,,W,W,-3.0,,-3.0,50.0,48.0,,,Action Network splits 2026-10-18T13:59,-2.5,43.0,0.558
+2026,6,2026-10-19T01:34:01+00:00,CHI @ ATL,CHI,ATL,2.5,1.5,1.5,ATL +2.5,home,False,1.0,0.5198,EDGE,False,,,,W,L,-8.0,,1.5,58.0,60.0,,,Action Network splits 2026-10-18T13:59,-1.5,48.5,0.533
+2026,6,2026-10-19T01:34:01+00:00,BAL @ CLE,BAL,CLE,4.5,3.0,3.0,CLE +4.5,home,True,1.5,0.5847,EDGE,False,,,,L,W,3.0,,3.5,44.0,46.0,,,Action Network splits 2026-10-18T13:59,3.5,43.0,0.374
+2026,6,2026-10-19T01:34:01+00:00,TEN @ IND,TEN,IND,-7.5,-6.5,-6.5,TEN +7.5,away,True,1.0,0.5576,EDGE,True,TEN +7.5,away,1.0,W,W,-6.0,,-6.5,77.0,83.0,,,Action Network splits 2026-10-18T13:59,-6.5,46.5,0.717
+2026,6,2026-10-19T01:34:01+00:00,NYJ @ NE,NYJ,NE,-7.5,-7.5,-7.5,NE -7.5,home,False,0.0,0.5,coin flip,False,,,,W,L,7.0,,-7.0,76.0,71.0,,,Action Network splits 2026-10-18T13:59,-8.5,40.5,0.787
+2026,6,2026-10-19T01:34:01+00:00,NO @ NYG,NO,NYG,1.5,1.5,1.5,NYG +1.5,home,False,0.0,0.5,coin flip,True,NYG +1.5,home,0.0,L,L,-7.0,,1.5,55.0,59.0,,,Action Network splits 2026-10-18T13:59,-2.5,44.0,0.565
+2026,6,2026-10-19T01:34:01+00:00,CAR @ PHI,CAR,PHI,-1.5,3.0,3.0,CAR +1.5,away,True,4.5,0.6101,EDGE,True,CAR +1.5,away,4.5,W,W,-11.0,,-2.0,40.0,30.0,,,mkt_line = 9-book median PK on Oct 14 (books CAR -1.5 to PHI -1.5; nflverse had CAR -1.5); Action Network splits 2026-10-18T13:59,-3.0,44.5,0.604
+2026,6,2026-10-19T01:34:01+00:00,PIT @ TB,PIT,TB,2.5,2.5,2.5,TB +2.5,home,False,0.0,0.5,coin flip,True,TB +2.5,home,0.0,L,L,-7.0,,2.5,33.0,37.0,,,Action Network splits 2026-10-18T13:59,-2.5,41.0,0.557
+2026,6,2026-10-19T01:34:01+00:00,ARI @ LAR,ARI,LAR,-12.5,-12.5,-12.5,LAR -12.5,home,False,0.0,0.5,coin flip,True,ARI +12.5,away,0.0,W,L,-2.0,,-10.5,74.0,75.0,,,Action Network splits 2026-10-18T13:59,-7.5,51.0,0.749
+2026,6,2026-10-19T01:34:01+00:00,LAC @ KC,LAC,KC,-8.5,-7.5,-7.5,LAC +8.5,away,True,1.0,0.5378,EDGE,False,,,,L,L,16.0,,-7.5,68.0,64.0,,,Action Network splits 2026-10-18T13:59,-10.5,43.5,0.811
+2026,6,2026-10-19T01:34:01+00:00,BUF @ LV,BUF,LV,5.5,5.5,5.5,LV +5.5,home,False,0.0,0.5,coin flip,False,,,,L,W,-3.0,,4.5,33.0,37.0,,,Action Network splits 2026-10-18T13:59,5.0,50.0,0.339
+2026,6,2026-10-19T01:34:01+00:00,DAL @ GB,DAL,GB,-1.5,-1.5,1.5,GB -1.5,home,False,0.0,0.5,coin flip,False,,,,L,W,10.0,,1.0,38.0,36.0,,,Action Network splits 2026-10-18T13:59,-3.0,50.5,0.588
+2026,6,2026-10-19T01:34:01+00:00,WAS @ SF,WAS,SF,-7.5,-7.5,-7.5,SF -7.5,home,False,0.0,0.5,coin flip,False,,,,W,L,6.0,,-7.5,79.0,85.0,,,Action Network splits 2026-10-18T13:59,-11.0,47.5,0.815
