@@ -249,7 +249,7 @@ def print_sheet(d, week, top=15):
 COLS = ["week", "logged_at", "player", "key", "pos", "team", "game", "kickoff", "market", "side",
         "line", "book", "price", "books", "fair_mean", "p_fair", "slp_mean", "p_slp", "edge",
         "ev_shop", "ev_slp", "shop", "proj", "injury", "hist_n", "hist_avg", "l8_avg", "hit_rate",
-        "opp", "opp_factor", "actual", "result", "units"]
+        "hit_l5", "hit_l10", "hit_season", "opp", "opp_factor", "opp_rank", "actual", "result", "units"]
 
 
 def write_log(d, week):
@@ -261,6 +261,7 @@ def write_log(d, week):
     for c in ("actual", "result", "units"):
         d[c] = None
     old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame(columns=COLS)
+    old = old.reindex(columns=COLS)
     keep = ~((old.week == week) & old.game.isin(d.game))
     out = pd.concat([old[keep], d[COLS]], ignore_index=True)
     os.makedirs(DATA, exist_ok=True)
