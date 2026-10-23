@@ -7,7 +7,6 @@ before kickoff and graded afterwards. A paper test, like bets.py: nothing is bet
     python3 props.py sheet 5 --no-log     # just print
     python3 props.py grade 4              # results from Sleeper's box scores
     python3 props.py report
-    python3 props.py dashboard            # the dashboard's data -> data/dashboard/*.json
 
 Props come from The Odds API through ../nfl_fantasy/fantasy_props.py (same
 saved files, so a week fetched there costs nothing here). For every player x
@@ -54,6 +53,16 @@ from weekly_stats import _normalize_name    # noqa: E402
 LOG = os.path.join(DATA, "prop_log.csv")
 SHOP_EV = 0.03          # best offer beats the other books' fair price by 3%+
 PROJ_EDGE = 0.08        # Sleeper's P(side) is 8+ points above the market's fair P
+# PICK: the props you'd actually bet. From the PROJ flags, keep those where the
+# player's last 8 games beat this line on this side at least half the time and
+# the matchup favours the side (opponent allows at least the league average to
+# an over, at most to an under); no anytime TDs; then the PICK_MAX with the
+# biggest Sleeper edge in the week. Backtest on weeks 4-5 (the rules were chosen
+# on those same weeks, so treat it as a lead): all PROJ 52.4% vs the market's
+# 50.4%, +1.7%, 124 a week; these 15 a week 66.7% vs 52.2%, +23.9% (+4.0% and
+# +25.0% by week). Line shop (SHOP) is logged but not a pick: its profit was one
+# week of long shots (-23.9% in week 4, +10.6% in week 5).
+PICK_MAX = 15
 MIN_BOOKS = 3           # books quoting the player x market (SHOP needs 2+ others)
 # Scope: only lines and prices the probability shapes are good for. The yardage
 # shapes were measured on starters' volume, so tiny lines (a QB's 0.5 rushing
@@ -228,6 +237,11 @@ def print_sheet(d, week, top=15):
     print(f"PLAYER PROPS  week {week}   {d.player.nunique()} players, {len(d)} priced sides, "
           f"best offer across books")
     print("=" * 128)
+    if "pick" in d and d.pick.any():
+        print(f"\nPICKS: the {PICK_MAX} to bet (PROJ, recent form and matchup agree, no anytime TD; biggest edges)")
+        print(hdr)
+        for r in d[d.pick].sort_values("edge", ascending=False).itertuples():
+            print(line(r))
     print(f"\nPROJ: Sleeper's P(side) {PROJ_EDGE:.0%}+ above the market's fair P  (overs and unders)")
     print(hdr)
     for r in d[d.proj].sort_values("edge", ascending=False).head(top).itertuples():
@@ -248,8 +262,20 @@ def print_sheet(d, week, top=15):
 # ------------------------------------------------------------------ log
 COLS = ["week", "logged_at", "player", "key", "pos", "team", "game", "kickoff", "market", "side",
         "line", "book", "price", "books", "fair_mean", "p_fair", "slp_mean", "p_slp", "edge",
-        "ev_shop", "ev_slp", "shop", "proj", "injury", "hist_n", "hist_avg", "l8_avg", "hit_rate",
+        "ev_shop", "ev_slp", "shop", "proj", "pick", "injury", "hist_n", "hist_avg", "l8_avg", "hit_rate",
         "hit_l5", "hit_l10", "hit_season", "opp", "opp_factor", "opp_rank", "actual", "result", "units"]
+
+
+def mark_picks(d):
+    """The week's PICK flags (see PICK_MAX), ranked across every game of the week."""
+    over = d.side.isin(["over", "yes"])
+    fav = pd.Series(np.where(over, d.opp_factor, 1 / d.opp_factor), index=d.index)
+    proj = d.proj.astype(str).str.lower() == "true"
+    ok = proj & (d.hit_rate >= 0.5) & (fav >= 1) & (d.market != "player_anytime_td")
+    pick = pd.Series(False, index=d.index)
+    for _, idx in d[ok].groupby("week").groups.items():
+        pick[d.loc[idx].sort_values("edge", ascending=False).head(PICK_MAX).index] = True
+    return pick
 
 
 def write_log(d, week):
@@ -263,7 +289,9 @@ def write_log(d, week):
     old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame(columns=COLS)
     old = old.reindex(columns=COLS)
     keep = ~((old.week == week) & old.game.isin(d.game))
+    d["pick"] = False
     out = pd.concat([old[keep], d[COLS]], ignore_index=True)
+    out["pick"] = mark_picks(out)
     os.makedirs(DATA, exist_ok=True)
     out.to_csv(LOG, index=False)
     print(f"\nlogged {len(d)} sides for week {week} -> {os.path.relpath(LOG)}")
@@ -291,6 +319,8 @@ def sheet(week, cached=False, log=True, season=SEASON):
             save_snapshot(slp, set(off.player.map(_normalize_name)), week, season)
     d = build_sheet(off, slp)
     d = history.features(d, season, week)      # player history and matchup, games before this week only
+    d["week"] = week
+    d["pick"] = mark_picks(d)                  # re-marked across the whole week when logged
     print_sheet(d, week)
     if log:
         write_log(d, week)
@@ -396,6 +426,9 @@ def report(log=None, title="ALL WEEKS"):
     print(_row("  PROJ overs / yes", log[log.proj & log.side.isin(["over", "yes"])]))
     print(_row("  PROJ unders / no", log[log.proj & log.side.isin(["under", "no"])]))
     print(_row("SHOP and PROJ", log[log.shop & log.proj]))
+    if "pick" in log:
+        pk = log.pick.astype(str).str.lower() == "true"
+        print(_row(f"PICK (the {PICK_MAX} a week you'd bet)", log[pk]))
     # each prop once (over / yes side): the under's edge is the over's, negated
     print("\n  Sleeper edge on the over / yes (P slp - P mkt), each prop once:")
     e = log[log.edge.notna() & log.side.isin(["over", "yes"])]
@@ -422,107 +455,12 @@ def report(log=None, title="ALL WEEKS"):
     print("  would. ROI includes the vig. Props carry ~5-10% vig, so a flat bettor starts behind.")
 
 
-# ------------------------------------------------------------------ dashboard
-DASH_DIR = os.path.join(DATA, "dashboard")
-SHAPES_CHECK = os.path.join(HERE, "..", "nfl_fantasy", "data", "prop_shapes_check.csv")
-
-
-def _stats(g):
-    g = g[g.result.isin(["win", "loss", "push"])]
-    w, l, p = (int((g.result == s).sum()) for s in ("win", "loss", "push"))
-    n = len(g)
-    return dict(n=n, wins=w, losses=l, pushes=p,
-                win_pct=round(w / (w + l), 4) if w + l else None,
-                mkt_p=round(float(g.p_fair.mean()), 4) if n else None,
-                units=round(float(g.units.sum()), 2), roi=round(float(g.units.sum()) / n, 4) if n else None)
-
-
-def dashboard():
-    """Aggregates for the props dashboard, one JSON file per dataset."""
-    import json
-    log = pd.read_csv(LOG)
-    for c in ("shop", "proj"):
-        log[c] = log[c].astype(str).str.lower() == "true"
-    g = log[log.result.notna()]
-    over = g.side.isin(["over", "yes"])
-    groups = [("all", "Every side", g), ("overs", "Overs", g[over]), ("unders", "Unders", g[~over]),
-              ("proj", "PROJ picks", g[g.proj]), ("proj_overs", "PROJ overs", g[g.proj & over]),
-              ("proj_unders", "PROJ unders", g[g.proj & ~over]), ("shop", "SHOP picks", g[g.shop])]
-    out = {"summary": [dict(group=k, label=lab, weeks=int(g.week.nunique()), **_stats(x)) for k, lab, x in groups]}
-
-    weekly = []
-    for sig, mask in (("all", g.index == g.index), ("proj", g.proj), ("shop", g.shop)):
-        cum = 0.0
-        for wk, x in g[mask].groupby("week"):
-            st = _stats(x)
-            cum += st["units"]
-            weekly.append(dict(week=int(wk), signal=sig, **st, cum_units=round(cum, 2)))
-    out["weekly"] = weekly
-
-    e = g[g.edge.notna() & over]                 # each prop once: the under's edge mirrors the over's
-    cuts = [(-1, -0.08, "below −8"), (-0.08, -0.03, "−8 to −3"), (-0.03, 0.03, "−3 to +3"),
-            (0.03, 0.08, "+3 to +8"), (0.08, 1, "+8 and up")]
-    out["edge_buckets"] = [dict(bucket=lab, order=i, **_stats(e[(e.edge >= lo) & (e.edge < hi)]))
-                           for i, (lo, hi, lab) in enumerate(cuts)]
-
-    ov = g[g.side.isin(["over", "yes"])]
-    out["context_buckets"] = (
-        [dict(id=f"form {lab}", feature="Recent form", bucket=lab, order=i,
-              **_stats(ov[ov.hit_rate.notna() & (ov.hit_rate >= lo) & (ov.hit_rate < hi)]))
-         for i, (lab, lo, hi) in enumerate(FORM_BUCKETS)] +
-        [dict(id=f"matchup {lab}", feature="Matchup", bucket=lab, order=i,
-              **_stats(ov[ov.opp_factor.notna() & (ov.opp_factor >= lo) & (ov.opp_factor < hi)]))
-         for i, (lab, lo, hi) in enumerate(MATCHUP_BUCKETS)])
-
-    pj = g[g.proj]
-    out["by_market"] = [dict(market=SHORT[m], **_stats(x),
-                             overs=int((x.side.isin(["over", "yes"]) & (x.result != "void")).sum()),
-                             unders=int((x.side.isin(["under", "no"]) & (x.result != "void")).sum()))
-                        for m, x in pj.groupby("market")]
-
-    wk = int(log.week.max())
-    f = log[(log.week == wk) & (log.proj | log.shop)].copy()
-    f["bet"] = [("YES" if s == "yes" else "NO") if m == "player_anytime_td" else f"{s.upper()} {l:g}"
-                for m, s, l in zip(f.market, f.side, f.line)]
-    f["signal"] = np.where(f.proj & f.shop, "PROJ + SHOP", np.where(f.proj, "PROJ", "SHOP"))
-    out["picks"] = [dict(id=f"{r.key}|{r.market}|{r.side}", week=wk, player=r.player,
-                         team=None if pd.isna(r.team) else r.team, game=r.game, market=SHORT[r.market],
-                         bet=r.bet, price=int(r.price), book=r.book, p_mkt=r.p_fair,
-                         p_slp=None if pd.isna(r.p_slp) else r.p_slp,
-                         edge=None if pd.isna(r.edge) else r.edge, ev_shop=r.ev_shop, signal=r.signal,
-                         hit_rate=None if pd.isna(r.hit_rate) else float(r.hit_rate),
-                         l8_avg=None if pd.isna(r.l8_avg) else float(r.l8_avg),
-                         hist_avg=None if pd.isna(r.hist_avg) else float(r.hist_avg),
-                         hist_n=None if pd.isna(r.hist_n) else int(r.hist_n),
-                         opp=None if pd.isna(r.opp) else r.opp,
-                         opp_factor=None if pd.isna(r.opp_factor) else float(r.opp_factor),
-                         result="open" if pd.isna(r.result) else r.result,
-                         actual=None if pd.isna(r.actual) else float(r.actual))
-                    for r in f.sort_values("edge", ascending=False).itertuples()]
-
-    if os.path.exists(SHAPES_CHECK):
-        sc = pd.read_csv(SHAPES_CHECK)
-        names = {"player_pass_yds": "Passing yds", "player_rush_yds": "Rushing yds",
-                 "qb_rush_yds": "QB rushing yds", "player_reception_yds": "Receiving yds"}
-        sc["id"] = sc.market + " " + sc.band
-        sc["market"] = sc.market.map(names)
-        out["shape_check"] = sc.to_dict("records")
-
-    os.makedirs(DASH_DIR, exist_ok=True)
-    for k, rows in out.items():
-        json.dump(rows, open(os.path.join(DASH_DIR, f"{k}.json"), "w"), indent=0)
-    print(f"dashboard data: {', '.join(f'{k} ({len(v)})' for k, v in out.items())} -> "
-          f"{os.path.relpath(DASH_DIR)}")
-
-
 def main():
     a = sys.argv[1:]
-    if not a or a[0] not in ("sheet", "grade", "report", "dashboard"):
+    if not a or a[0] not in ("sheet", "grade", "report"):
         raise SystemExit(__doc__)
     if a[0] == "report":
         return report()
-    if a[0] == "dashboard":
-        return dashboard()
     week = int(a[1])
     if a[0] == "grade":
         return grade(week)

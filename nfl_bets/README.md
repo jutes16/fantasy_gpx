@@ -95,7 +95,6 @@ python3 props.py sheet 5            # Sunday morning: props + Sleeper -> sheet, 
 python3 props.py sheet 5 --cached   # re-use props already saved by fantasy_props.py (no credits)
 python3 props.py grade 5            # Tuesday: results from Sleeper's box scores
 python3 props.py report
-python3 props.py dashboard          # the dashboard's data -> data/dashboard/*.json
 ```
 
 Props (passing / rushing / receiving yards, receptions, passing TDs, anytime
@@ -109,6 +108,22 @@ books**, with two signals:
   (an outlier line or a stale price).
 - **PROJ**: Sleeper's projection gives the side 8+ points more probability than
   the market's fair price. These are the "who goes over / under" picks.
+- **PICK**: the props you'd actually bet, at most 15 a week. From the PROJ
+  flags, keep those where the player's last 8 games beat this line on this side
+  at least half the time and the matchup favours the side (the opponent allows
+  at least the league average to an over, at most to an under), drop anytime
+  TDs, then take the 15 biggest Sleeper edges in the week.
+
+**How PICK was chosen (weeks 4-5, the only graded weeks):** seven rules were
+listed first and each tested by week. Injuries barely mattered (3 of 248 PROJ
+flags carried a tag), and the biggest Sleeper edges did fine (7-3). Two held in
+both weeks: matchup agreeing (58.0% vs the market's 51.1%) and recent form
+agreeing (54.1% vs 51.1%). With both, no anytime TDs and the top 15 a week:
+20-10, 66.7% vs 52.2%, +23.9% (+4.0% and +25.0% by week), against all 248 PROJ
+flags at 52.4% vs 50.4%, +1.7%. The rules were picked on those same two weeks
+(z = 1.6), so this is a lead the coming weeks will test. Line shop (SHOP) stays
+logged but isn't a pick: its profit was one week of long shots (-23.9% in
+week 4, +10.6% in week 5).
 
 Probabilities use the shapes measured from nflverse game logs
 (`../nfl_fantasy/prop_shapes.py`): yards follow the measured game-to-game
@@ -153,14 +168,8 @@ The sheet saves Sleeper's projections at log time
 on a week that has started uses that file, never today's projections, which
 Sleeper revises after the games (a player ruled out drops to zero).
 
-**Dashboard:** [Prop Bet Tracker](https://claude.ai/artifact/DFMxAvuerHEa3eiSxMfJqZ),
-a private claude.ai page: record by signal, results by Sleeper edge, by recent
-form and by matchup, units over the season, PROJ by market, the latest week's
-flags (searchable, with each player's last-8 hit rate and the matchup) and the
-2025 shape check. It reads uploaded copies of `data/dashboard/*.json`
-(git-ignored), so it doesn't update itself: after grading, run
-`python3 props.py dashboard` and ask Claude to upload the files to the
-dashboard.
+The [Bet Tracker](#bet-tracker-dashboard) dashboard shows these results and each
+week's flagged props.
 
 **Weeks 4-5** (both backfilled from props and Sleeper projections saved before
 kickoff: week 4 on Oct 2, week 5 at 12:58 on Oct 11, so week 5 has no Thursday
@@ -264,6 +273,26 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 - **Watch the underdog lean.** ELWAY has favoured underdogs most weeks; if
   it only wins in underdog-friendly seasons, it's a dog bet, not an edge.
 
+## Bet Tracker dashboard
+
+[Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) is a private claude.ai dashboard over the bets you'd make:
+ELWAY's recommended game bet per game and the prop PICKs. Two tabs:
+
+- **Dashboard:** profit, wagers, win rate and ROI, the record, running profit
+  or ROI by week, and the bets themselves (filterable by week and result, with
+  search). Filter by bet type (each ELWAY instrument, prop picks), all games or
+  without PHI, flat or EV-scaled stakes, and last week / 4 weeks / season.
+- **Analysis:** the upcoming week's recommendations: the props sheet (pick,
+  price, Sleeper vs market projection, rating, EV, the opponent's rank for the
+  stat, injury tag, last-5 / last-10 / season hit rates) and ELWAY's game bets
+  (recommended bet per game, price, ELWAY vs market probability, EV, stake).
+  Props open on the week's PICKs, each with the best price and the book
+  offering it; every flag is a click away.
+
+It reads uploaded copies of `data/dashboard_hq/*.json` (git-ignored), so it
+doesn't update itself: after a sheet or grading, run `python3 hq.py` and ask
+Claude to upload the files to the dashboard.
+
 ## Cloud snapshots
 
 `snapshot.py` runs in GitHub Actions in the private repo
@@ -283,13 +312,14 @@ before. The data repo is private because the props are per-book Odds API prices.
 | `bets.py` | sheet, log, grade, report, ELWAY paste |
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
-| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report, dashboard data |
+| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report |
+| `hq.py` | the Bet Tracker dashboard's data: both ledgers, results by filter, the upcoming week's sheets |
 | `snapshot.py` | the cloud's pre-kickoff snapshots: props, Sleeper projections, Kalshi (run by GitHub Actions in fantasy_gpx-data) |
 | `sync_data.py` | copies the cloud snapshots from the private data repo into this checkout |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |
 | `data/prop_log.csv` | every logged prop side and its result (git-ignored: per-book Odds API prices) |
-| `data/dashboard/` | the dashboard's data, from `props.py dashboard` (git-ignored) |
+| `data/dashboard_hq/` | the Bet Tracker dashboard's data, from `hq.py` (git-ignored) |
 | `data/kalshi/` | timestamped Kalshi snapshots |
 | `data/odds/` | sportsbook odds snapshots (git-ignored) |
 | `data/elway/` | ELWAY tables and distributions (git-ignored: paywalled) |

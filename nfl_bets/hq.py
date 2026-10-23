@@ -1,7 +1,9 @@
 """
 Data for the combined betting dashboard (Dashboard / Bets / Analysis tabs):
-ELWAY's recommended game bets and the props paper test in one ledger, plus the
-upcoming week's recommendations.
+the bets you'd make, in one ledger: ELWAY's recommended game bet per game and
+the prop PICKS (props.py: the PICK_MAX a week where Sleeper, recent form and the
+matchup agree), plus the upcoming week's recommendations. The wider prop flags
+(every Sleeper or line-shop flag) stay in props.py report, not in the ledger.
 
     python3 hq.py            # -> data/dashboard_hq/*.json
 
@@ -24,10 +26,10 @@ from common import DATA, SEASON
 OUT = os.path.join(DATA, "dashboard_hq")
 TYPE_NAMES = {"kalshi_win": "Kalshi win", "book_ml": "Book moneyline", "kalshi_spread": "Kalshi spread",
               "book_spread": "Book spread", "pair": "Win vs spread pair",
-              "prop_sleeper": "Prop: Sleeper pick", "prop_shop": "Prop: line shop"}
+              "prop_pick": "Prop pick"}
 FILTERS = {"all": None, "elway": ["kalshi_win", "book_ml", "kalshi_spread", "book_spread", "pair"],
-           "props": ["prop_sleeper", "prop_shop"], **{k: [k] for k in TYPE_NAMES}}
-FILTER_NAMES = {"all": "All bets", "elway": "All ELWAY game bets", "props": "All props", **TYPE_NAMES}
+           **{k: [k] for k in TYPE_NAMES}}
+FILTER_NAMES = {"all": "All bets", "elway": "All ELWAY game bets", **TYPE_NAMES}
 STAT_LABEL = {"player_pass_yds": "Pass Yds", "player_pass_tds": "Pass TDs", "player_rush_yds": "Rush Yds",
               "player_reception_yds": "Rec Yds", "player_receptions": "Receptions",
               "player_anytime_td": "Anytime TD"}
@@ -72,16 +74,14 @@ def elway_bets():
 
 def prop_bets():
     log = pd.read_csv(props.LOG)
-    for c in ("shop", "proj"):
-        log[c] = log[c].astype(str).str.lower() == "true"
-    f = log[log.proj | log.shop]
+    f = log[log.pick.astype(str).str.lower() == "true"]
     rows = []
     for x in f.itertuples():
-        t = "prop_sleeper" if x.proj else "prop_shop"
+        t = "prop_pick"
         side = {"over": "Over", "under": "Under", "yes": "Yes", "no": "No"}[x.side]
         line = "" if x.market == "player_anytime_td" else f" {x.line:g}"
         res = RESULT.get(x.result, "open") if isinstance(x.result, str) else "open"
-        ev = x.ev_slp if x.proj else x.ev_shop
+        ev = x.ev_slp
         rows.append(dict(id=f"P|{int(x.week)}|{x.key}|{x.market}|{x.side}", source="Props", type=t,
                          type_name=TYPE_NAMES[t], week=int(x.week), game=x.game,
                          bet=f"{x.player} {side}{line} {STAT_LABEL[x.market]}", price=_price_label(x.price),
@@ -136,7 +136,7 @@ def performance(all_bets):
 
 def props_week(week):
     log = pd.read_csv(props.LOG)
-    for c in ("shop", "proj"):
+    for c in ("shop", "proj", "pick"):
         log[c] = log[c].astype(str).str.lower() == "true"
     w = log[(log.week == week) & (log.proj | log.shop)]
     rows = []
@@ -154,6 +154,8 @@ def props_week(week):
                          mkt_proj=_num(x.fair_mean, 2), slp_proj=_num(x.slp_mean, 2), proj_diff=_num(diff, 2),
                          rating=stars, p_mkt=_num(x.p_fair), p_slp=_num(x.p_slp), ev_slp=_num(x.ev_slp),
                          ev_shop=_num(x.ev_shop), signal="PROJ + SHOP" if x.proj and x.shop else ("PROJ" if x.proj else "SHOP"),
+                         is_pick=bool(x.pick), fav=_num(x.opp_factor if x.side in ("over", "yes") else
+                                                     (1 / x.opp_factor if x.opp_factor else None)),
                          opp_rank=None if pd.isna(x.opp_rank) else int(x.opp_rank),
                          opp_factor=_num(x.opp_factor), hit_l5=_num(x.hit_l5), hit_l10=_num(x.hit_l10),
                          hit_season=_num(x.hit_season), result=RESULT.get(x.result, "open") if isinstance(x.result, str) else "open"))
