@@ -54,8 +54,10 @@ YES_ONLY_VIG = 0.06                    # overround assumed when a book posts onl
 
 
 # ------------------------------------------------------------------ fetch
-def fetch_props(week, season=SEASON, homes=None, cached=False):
-    """Props for the week's games that haven't kicked off; saved per game."""
+def fetch_props(week, season=SEASON, homes=None, cached=False, window=None):
+    """Props for the week's games that haven't kicked off; saved per game.
+    window: only buy games kicking off within this many hours (the scheduled
+    snapshots buy each game once, shortly before it starts)."""
     d = os.path.join(PROPS_DIR, f"{season}_wk{week:02d}")
     os.makedirs(d, exist_ok=True)
     sched = schedule(season, week)
@@ -75,6 +77,8 @@ def fetch_props(week, season=SEASON, homes=None, cached=False):
             continue
         if pd.Timestamp(e["commence_time"]) <= now:
             continue                                   # no pre-game props once started
+        if window is not None and pd.Timestamp(e["commence_time"]) > now + pd.Timedelta(hours=window):
+            continue                                   # not yet: a later run buys it
         data, last, left = odds_api.get(f"/sports/{odds_api.SPORT}/events/{e['id']}/odds",
                                         dict(regions="us", markets=",".join(MARKETS),
                                              oddsFormat="american"))
