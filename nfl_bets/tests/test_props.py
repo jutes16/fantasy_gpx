@@ -53,3 +53,14 @@ def test_ev_and_settle():
     assert props.settle("player_receptions", "over", 5.0, 5) == "push"
     assert props.settle("player_anytime_td", "yes", 0.5, 1) == "win"
     assert props.settle("player_anytime_td", "yes", 0.5, 0) == "loss"
+
+
+def test_snapshot_window():
+    """Only games after now and within the window are snapshotted."""
+    import pandas as pd
+    import snapshot
+    now = pd.Timestamp("2026-10-25T15:00:00Z")
+    sched = pd.DataFrame(dict(away=["A", "B", "C", "D"], home=["E", "F", "G", "H"],
+                              kickoff=pd.to_datetime(["2026-10-25T13:30:00Z", "2026-10-25T17:00:00Z",
+                                                      "2026-10-25T17:25:00Z", "2026-10-26T00:20:00Z"])))
+    assert list(snapshot.kicking_off(sched, now, 2.5).away) == ["B", "C"]
