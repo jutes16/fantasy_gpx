@@ -5,15 +5,15 @@ Every step across `nfl_model/` (pool), `nfl_bets/` (ELWAY paper bets) and
 it says "last week". ⏰ = a scheduled task in the Claude desktop app runs it or
 reminds you (see the bottom of this file).
 
-## Tuesday: grade last week, waivers
+## Tuesday: grade last week, waivers (by hand)
 
 | when | folder | step |
 |---|---|---|
-| 9:11 am ⏰ | `nfl_model` | `python3 log_week.py grade <last wk>` then `python3 pool_tracker.py report` |
-| 9:11 am ⏰ | `nfl_bets` | `python3 bets.py grade <last wk>` then `python3 bets.py report` |
-| 9:11 am ⏰ | `nfl_bets` | `python3 props.py grade <last wk>` then `python3 props.py report` |
+| any time | `nfl_model` | `python3 log_week.py grade <last wk>` then `python3 pool_tracker.py report` |
+| any time | `nfl_bets` | `python3 sync_data.py`, then `python3 bets.py grade <last wk>` then `python3 bets.py report` |
+| any time | `nfl_bets` | `python3 props.py grade <last wk>` then `python3 props.py report` |
 | after grading | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it to the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) |
-| 7:02 pm ⏰ | `nfl_fantasy` | `python3 sleeper_lineup.py jg337` (rest-of-season free agents; Sleeper waivers clear overnight Tue → Wed) |
+| before Tue night | `nfl_fantasy` | `python3 sleeper_lineup.py jg337` (rest-of-season free agents; Sleeper waivers clear overnight Tue → Wed) |
 
 ## Wednesday: ELWAY and the pool sheet
 
@@ -57,8 +57,6 @@ the regular season.
 
 | task | when | does |
 |---|---|---|
-| `nfl-tue-grade` | Tue 9:11 am | Grades the pool, ELWAY bets and props, then summarizes them |
-| `nfl-tue-waivers` | Tue 7:02 pm | Runs `sleeper_lineup.py` and lists waiver targets |
 | `nfl-wed-elway` | Wed 10:06 am | Reminder only (ELWAY pull, bet sheet, pool sheet) |
 | `nfl-thu-tnf-close` | Thu 7:52 pm | Runs `kalshi.py` |
 | `nfl-sun-pool` | Sun 10:06 am | Refreshes lines and splits, runs `pool.py`, reminds you to submit and log |
