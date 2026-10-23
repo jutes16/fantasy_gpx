@@ -95,7 +95,6 @@ python3 props.py sheet 5            # Sunday morning: props + Sleeper -> sheet, 
 python3 props.py sheet 5 --cached   # re-use props already saved by fantasy_props.py (no credits)
 python3 props.py grade 5            # Tuesday: results from Sleeper's box scores
 python3 props.py report
-python3 props.py dashboard          # the dashboard's data -> data/dashboard/*.json
 ```
 
 Props (passing / rushing / receiving yards, receptions, passing TDs, anytime
@@ -153,14 +152,8 @@ The sheet saves Sleeper's projections at log time
 on a week that has started uses that file, never today's projections, which
 Sleeper revises after the games (a player ruled out drops to zero).
 
-**Dashboard:** [Prop Bet Tracker](https://claude.ai/artifact/DFMxAvuerHEa3eiSxMfJqZ),
-a private claude.ai page: record by signal, results by Sleeper edge, by recent
-form and by matchup, units over the season, PROJ by market, the latest week's
-flags (searchable, with each player's last-8 hit rate and the matchup) and the
-2025 shape check. It reads uploaded copies of `data/dashboard/*.json`
-(git-ignored), so it doesn't update itself: after grading, run
-`python3 props.py dashboard` and ask Claude to upload the files to the
-dashboard.
+The [Bet Tracker](#bet-tracker-dashboard) dashboard shows these results and each
+week's flagged props.
 
 **Weeks 4-5** (both backfilled from props and Sleeper projections saved before
 kickoff: week 4 on Oct 2, week 5 at 12:58 on Oct 11, so week 5 has no Thursday
@@ -264,6 +257,25 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 - **Watch the underdog lean.** ELWAY has favoured underdogs most weeks; if
   it only wins in underdog-friendly seasons, it's a dog bet, not an edge.
 
+## Bet Tracker dashboard
+
+[Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) is a private claude.ai dashboard over both paper tests
+(ELWAY's game bets and the props), with three tabs:
+
+- **Dashboard:** profit, wagers, win rate and ROI, the record, and running profit
+  or ROI by week. Filter by bet type (each ELWAY instrument, Sleeper picks, line
+  shop), all games or without PHI, flat or EV-scaled stakes, and last week / 4
+  weeks / season.
+- **Bets:** every bet, filterable by type, week and result, with search.
+- **Analysis:** the upcoming week's recommendations: the props sheet (pick,
+  price, Sleeper vs market projection, rating, EV, the opponent's rank for the
+  stat, injury tag, last-5 / last-10 / season hit rates) and ELWAY's game bets
+  (recommended bet per game, price, ELWAY vs market probability, EV, stake).
+
+It reads uploaded copies of `data/dashboard_hq/*.json` (git-ignored), so it
+doesn't update itself: after a sheet or grading, run `python3 hq.py` and ask
+Claude to upload the files to the dashboard.
+
 ## Files
 
 | file | contents |
@@ -271,11 +283,12 @@ W-L, ELWAY's expected P&L, realized P&L, ROI, CLV.
 | `bets.py` | sheet, log, grade, report, ELWAY paste |
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
-| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report, dashboard data |
+| `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report |
+| `hq.py` | the Bet Tracker dashboard's data: both ledgers, results by filter, the upcoming week's sheets |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |
 | `data/prop_log.csv` | every logged prop side and its result (git-ignored: per-book Odds API prices) |
-| `data/dashboard/` | the dashboard's data, from `props.py dashboard` (git-ignored) |
+| `data/dashboard_hq/` | the Bet Tracker dashboard's data, from `hq.py` (git-ignored) |
 | `data/kalshi/` | timestamped Kalshi snapshots |
 | `data/odds/` | sportsbook odds snapshots (git-ignored) |
 | `data/elway/` | ELWAY tables and distributions (git-ignored: paywalled) |

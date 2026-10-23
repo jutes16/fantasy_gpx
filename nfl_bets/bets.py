@@ -14,8 +14,6 @@ Weekly:
                                           (becomes the "close" for CLV)
     python3 bets.py grade 4               after the games
     python3 bets.py report                season ledger by instrument
-    python3 bets.py dashboard             the ELWAY ledger dashboard's data ->
-                                          data/dashboard_bets/*.json
     python3 bets.py report --without PHI  ...leaving out games involving these teams
                                           (comma-separated; analysis only, the log
                                           and the recommendations are unchanged)
@@ -47,8 +45,8 @@ import pandas as pd
 
 import kalshi
 from common import (DATA, SEASON, EmpiricalMargin, HistoricalMargin, american_to_decimal,
-                    buy_no, buy_yes, canon, elway_path, kalshi_fee, load_dists, load_elway,
-                    nflverse, parse_elway, schedule)
+                    buy_no, buy_yes, elway_path, kalshi_fee, load_dists, load_elway,
+                    parse_elway, schedule)
 
 LOG = os.path.join(DATA, "bet_log.csv")
 STRIKE_WINDOW = 3.5
@@ -528,98 +526,6 @@ def report(weeks=None, without=None):
     print("CLV over many bets is the earliest honest sign of an edge; P&L lags far behind.")
 
 
-# ------------------------------------------------------------------ dashboard
-HERE = os.path.dirname(os.path.abspath(__file__))
-DASH_DIR = os.path.join(DATA, "dashboard_bets")
-DASH_VIEWS = {"all": None, "without_phi": ["PHI"]}
-INSTRUMENTS = ("kalshi_win", "book_ml", "kalshi_spread", "book_spread", "pair")
-
-
-def _ledger_stats(d):
-    d = d.dropna(subset=["pnl"])
-    k = scaled_stake(d.ev)
-    n = len(d)
-    return dict(bets=n, wins=int((d.result == "W").sum()), losses=int((d.result == "L").sum()),
-                ev_sum=round(float(d.ev.sum()), 2), pnl=round(float(d.pnl.sum()), 2),
-                roi=round(float(d.pnl.sum() / d.stake.sum()), 4) if n else None,
-                clv_cents=round(float(d.clv.mean() * 100), 2) if d.clv.notna().any() else None,
-                scaled_stake=round(float((d.stake * k).sum()), 2),
-                scaled_pnl=round(float((d.pnl * k).sum()), 2),
-                scaled_roi=round(float((d.pnl * k).sum() / (d.stake * k).sum()), 4) if n else None)
-
-
-def dashboard():
-    """Data for the ELWAY ledger dashboard, one JSON file per dataset."""
-    import json
-    log = pd.read_csv(LOG)
-    log = log[log.season == SEASON]
-    is_rec = lambda d: d[d.recommended.astype(str).str.lower() == "true"]
-    out = {k: [] for k in ("ledger", "weekly", "ev_thirds")}
-    for view, without in DASH_VIEWS.items():
-        L = log[~log.away.isin(without) & ~log.home.isin(without)] if without else log
-        first, latest = views(L)
-        for name, v in (("first", first), ("latest", latest)):
-            groups = [(i, v[v.instrument == i]) for i in INSTRUMENTS] if name == "first" else []
-            for inst, d in groups + [("RECOMMENDED", is_rec(v))]:
-                out["ledger"].append(dict(id=f"{view}|{name}|{inst}", view=view, log=name,
-                                          instrument=inst, **_ledger_stats(d)))
-            # recommended bets of one type (the dashboard's bet-type filter)
-            rv = is_rec(v)
-            for inst in INSTRUMENTS:
-                out["ledger"].append(dict(id=f"{view}|{name}|REC_{inst}", view=view, log=name,
-                                          instrument=f"REC_{inst}", **_ledger_stats(rv[rv.instrument == inst])))
-        rec_all = is_rec(first).dropna(subset=["pnl"]).copy()
-        rec_all["k"] = scaled_stake(rec_all.ev)
-        for inst in ("all",) + INSTRUMENTS:
-            r = rec_all if inst == "all" else rec_all[rec_all.instrument == inst]
-            cum = cum_s = 0.0
-            for wk, d in r.groupby("week"):
-                cum += d.pnl.sum()
-                cum_s += (d.pnl * d.k).sum()
-                out["weekly"].append(dict(id=f"{view}|{inst}|{int(wk)}", view=view, instrument=inst, week=int(wk),
-                                          bets=len(d), pnl=round(float(d.pnl.sum()), 2), cum_pnl=round(cum, 2),
-                                          scaled_pnl=round(float((d.pnl * d.k).sum()), 2), cum_scaled=round(cum_s, 2)))
-            if len(r) >= 3:
-                r = r.copy()
-                r["third"] = pd.qcut(r.ev.rank(method="first"), 3, labels=["Low EV", "Mid EV", "High EV"])
-                for i, (t, d) in enumerate(r.groupby("third", observed=True)):
-                    out["ev_thirds"].append(dict(id=f"{view}|{inst}|{t}", view=view, instrument=inst, third=t, order=i,
-                                                 avg_ev=round(float(d.ev.mean()), 3), **_ledger_stats(d)))
-
-    first, _ = views(log)
-    r = is_rec(first).copy()
-    r["stake_scaled"] = scaled_stake(r.ev)
-    out["bets"] = [dict(id=f"{int(x.week)}|{x.game}", week=int(x.week), game=x.game, instrument=x.instrument,
-                        bet=(f"{x.team} {x.side}" + ("" if pd.isna(x.strike) else f" {x.strike:g}")),
-                        price=float(x.price), ev=round(float(x.ev), 3), stake_scaled=round(float(x.stake_scaled), 2),
-                        result=x.result if isinstance(x.result, str) else "open",
-                        pnl=None if pd.isna(x.pnl) else round(float(x.pnl), 2),
-                        scaled_pnl=None if pd.isna(x.pnl) else round(float(x.pnl * x.stake_scaled), 2),
-                        clv_cents=None if pd.isna(x.clv) else round(float(x.clv * 100), 2),
-                        phi="PHI" in (x.away, x.home))
-                   for x in r.sort_values(["week", "game"]).itertuples()]
-
-    # ELWAY vs the market by team, and how the team did against the market line
-    wl = pd.read_excel(os.path.join(HERE, "..", "nfl_model", "data", "weekly_lines.xlsx"))
-    g = nflverse(refresh=False)
-    g = g[(g.season == SEASON) & (g.game_type == "REG")].copy()
-    g["away"], g["home"] = g.away_team.map(canon), g.home_team.map(canon)
-    m = wl[wl.elway_line.notna()].merge(g[["week", "away", "home", "result"]], on=["week", "away", "home"], how="left")
-    rows = []
-    for x in m.itertuples():          # lines home-perspective (neg = home favoured); result = home margin
-        for team, sgn in ((x.home, 1), (x.away, -1)):
-            rows.append(dict(team=team, gap=sgn * (x.mkt_line - x.elway_line),
-                             vs_line=None if pd.isna(x.result) else sgn * (x.result + x.mkt_line)))
-    t = pd.DataFrame(rows).groupby("team").agg(games=("gap", "size"), elway_vs_market=("gap", "mean"),
-                                               vs_market_line=("vs_line", "mean")).reset_index()
-    out["team_gap"] = t.round(2).sort_values("elway_vs_market", ascending=False).to_dict("records")
-
-    os.makedirs(DASH_DIR, exist_ok=True)
-    for k, rows in out.items():
-        json.dump(rows, open(os.path.join(DASH_DIR, f"{k}.json"), "w"), indent=0, default=str)
-    print(f"dashboard data: {', '.join(f'{k} ({len(v)})' for k, v in out.items())} -> {os.path.relpath(DASH_DIR)}")
-
-
 # ------------------------------------------------------------------ ELWAY paste
 def save_elway(week):
     text = "" if sys.stdin.isatty() else sys.stdin.read()
@@ -650,8 +556,6 @@ if __name__ == "__main__":
         grade(int(a[1]))
     elif cmd == "report":
         report(without=a[a.index("--without") + 1].upper().split(",") if "--without" in a else None)
-    elif cmd == "dashboard":
-        dashboard()
     elif cmd == "elway":
         save_elway(int(a[1]))
     else:

@@ -12,7 +12,7 @@ reminds you (see the bottom of this file).
 | 9:11 am ⏰ | `nfl_model` | `python3 log_week.py grade <last wk>` then `python3 pool_tracker.py report` |
 | 9:11 am ⏰ | `nfl_bets` | `python3 bets.py grade <last wk>` then `python3 bets.py report` |
 | 9:11 am ⏰ | `nfl_bets` | `python3 props.py grade <last wk>` then `python3 props.py report` |
-| after grading | `nfl_bets` | `python3 props.py dashboard`, then ask Claude to upload it to the [Prop Bet Tracker](https://claude.ai/artifact/DFMxAvuerHEa3eiSxMfJqZ) |
+| after grading | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it to the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) |
 | 7:02 pm ⏰ | `nfl_fantasy` | `python3 sleeper_lineup.py jg337` (rest-of-season free agents; Sleeper waivers clear overnight Tue → Wed) |
 
 ## Wednesday: ELWAY and the pool sheet
@@ -40,6 +40,7 @@ reminds you (see the bottom of this file).
 | before 1:00 pm | `nfl_model` | Claude's picks, made in a **separate conversation**, then `python3 pool_tracker.py claude <wk> A,B,C,D,E` |
 | 10:31 am ⏰ | `nfl_fantasy` | `python3 fantasy_props.py <wk>` (Odds API, ~90 credits), then `python3 sleeper_lineup.py jg337` |
 | 10:31 am ⏰ | `nfl_bets` | `python3 props.py sheet <wk> --cached` (the props just fetched; no credits) |
+| after that | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it (the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS)'s Analysis tab: this week's props and game bets) |
 | 12:47 pm ⏰ | `nfl_bets` | `python3 kalshi.py <wk>` (closing snapshot for the Sunday games) |
 
 Close `weekly_lines.xlsx` in Excel before the Sunday 10:06 run: it writes to

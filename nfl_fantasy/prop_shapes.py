@@ -35,7 +35,7 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 NFLVERSE = os.path.join(HERE, "data", "nflverse")
 OUT = os.path.join(HERE, "data", "prop_shapes.json")
-CHECK_OUT = os.path.join(HERE, "data", "prop_shapes_check.csv")   # the check, for the dashboard
+CHECK_OUT = os.path.join(HERE, "data", "prop_shapes_check.csv")   # the 2025 check, as a table
 URL = "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{}.csv"
 FIT, CHECK = (2022, 2023, 2024), (2025,)
 MIN_OTHER = 6
