@@ -3,12 +3,14 @@ Player history and matchup for a prop, from nflverse game logs, using only
 games played BEFORE the prop's week (no peeking).
 
   hit rate   share of the player's last 8 games (this season, then last
-             season's latest) that would have won the bet at today's line
+             season's latest) that would have won the bet at today's line;
+             also over his last 5 and last 10 games and this season alone
   avg        his average this season so far, and over those last 8 games
   matchup    what the opponent has allowed per game this season to the
              player's position for that stat, relative to the league
              average, pulled toward 1 by MATCHUP_PRIOR games' worth of
-             average defense (three or four games is mostly noise)
+             average defense (three or four games is mostly noise);
+             opp_rank 1-32, 1 = allows the least (toughest for an over)
 
 These are context and logged features, not part of any signal: ../nfl_bets/
 props.py report shows whether they predict anything beyond the market price.
@@ -66,6 +68,17 @@ def defense_factors(d, season, week):
     return out
 
 
+def defense_ranks(dfac):
+    """(opponent, group, market) -> 1..32, 1 = allows the least."""
+    out = {}
+    keys = {(g, m) for _, g, m in dfac}
+    for g, m in keys:
+        teams = sorted((f, t) for (t, gg, mm), f in dfac.items() if gg == g and mm == m)
+        for i, (_, t) in enumerate(teams, 1):
+            out[(t, g, m)] = i
+    return out
+
+
 def won(side, line, x):
     if side == "yes":
         return x >= 1
@@ -77,10 +90,12 @@ def won(side, line, x):
 
 
 def features(sheet, season, week, d=None):
-    """Adds hist_n, hist_avg, l8_avg, hit_rate, opp, opp_factor to a props sheet."""
+    """Adds hist_n, hist_avg, l8_avg, hit_rate (last 8), hit_l5, hit_l10, hit_season,
+    opp, opp_factor and opp_rank to a props sheet."""
     d = logs(season) if d is None else d
     before = d[(d.season < season) | (d.week < week)]
     dfac = defense_factors(d, season, week)
+    drank = defense_ranks(dfac)
     games = {k: g.sort_values(["season", "week"]) for k, g in before.groupby("key")}
     rows = []
     for r in sheet.itertuples():
@@ -88,7 +103,8 @@ def features(sheet, season, week, d=None):
         if g is not None and isinstance(r.team, str):
             on_team = g[g.team == r.team]
             g = on_team if len(on_team) else g                     # same name, other team: rare
-        f = dict(hist_n=0, hist_avg=None, l8_avg=None, hit_rate=None, opp=None, opp_factor=None)
+        f = dict(hist_n=0, hist_avg=None, l8_avg=None, hit_rate=None, hit_l5=None, hit_l10=None,
+                 hit_season=None, opp=None, opp_factor=None, opp_rank=None)
         away, home = r.game.split(" @ ")
         team = r.team if isinstance(r.team, str) else None
         if g is not None and len(g):
@@ -96,11 +112,15 @@ def features(sheet, season, week, d=None):
             vals = g[STAT[r.market]].to_numpy(dtype=float)
             cur = g[g.season == season][STAT[r.market]]
             last = vals[-LAST_N:]
-            hits = [won(r.side, r.line, x) for x in last]
-            hits = [h for h in hits if not (isinstance(h, float) and np.isnan(h))]
+
+            def rate(xs):
+                h = [won(r.side, r.line, x) for x in xs]
+                h = [v for v in h if not (isinstance(v, float) and np.isnan(v))]
+                return round(float(np.mean(h)), 3) if h else None
             f.update(hist_n=int(len(cur)), hist_avg=round(float(cur.mean()), 2) if len(cur) else None,
-                     l8_avg=round(float(last.mean()), 2),
-                     hit_rate=round(float(np.mean(hits)), 3) if hits else None)
+                     l8_avg=round(float(last.mean()), 2), hit_rate=rate(last),
+                     hit_l5=rate(vals[-5:]), hit_l10=rate(vals[-10:]),
+                     hit_season=rate(cur.to_numpy(dtype=float)) if len(cur) else None)
             grp = POS_GROUP.get(g.position.iloc[-1])
         else:
             grp = POS_GROUP.get(r.pos) if isinstance(r.pos, str) else None
@@ -109,5 +129,6 @@ def features(sheet, season, week, d=None):
             f["opp"] = opp
             fac = dfac.get((opp, grp, r.market))
             f["opp_factor"] = None if fac is None else round(float(fac), 3)
+            f["opp_rank"] = drank.get((opp, grp, r.market))
         rows.append(f)
     return pd.concat([sheet.reset_index(drop=True), pd.DataFrame(rows)], axis=1)

@@ -68,7 +68,22 @@ snapshot before each kickoff is the "close" used for closing-line value.
 ```
 python3 bets.py grade 4
 python3 bets.py report
+python3 bets.py report --without PHI    # same ledger leaving out PHI's games
 ```
+
+`report` shows every instrument two ways: flat (1 unit a bet) and **EV-scaled**,
+where the stake is the bet's EV / 0.15 units, capped at 0.5 to 2 (0.15 is about
+the median EV of logged bets; it's fixed, so each stake is known when the bet is
+made). The cap matters: uncapped, one 13¢ Kalshi long shot (ARI at LAR, week 6,
+EV 0.78) would have been a 4.2-unit bet and three quarters of the season's
+profit. Through week 6, recommended bets without PHI's games: flat +13.17 units
+(+41%), EV-scaled +24.10 (+66%); without the ARI win, +6.92 vs +11.60. Lower-EV
+bets did worse than higher-EV ones, but CLV doesn't rise with EV yet, so this is
+a comparison to track, not a reason to size up.
+
+`--without` is analysis only: the log and the recommendations are unchanged.
+It exists because ELWAY has rated PHI 3.5-6 pts above the market every week
+since week 4 (the most of any team) and those bets went 0-3.
 
 ## Player props: over or under?
 
