@@ -1,0 +1,983 @@
+<style>
+#dash-root .bt { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); }
+#dash-root .bt h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
+#dash-root .bt h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; text-wrap: balance; }
+#dash-root .bt p { margin: 0; }
+#dash-root .bt-tabs { display: flex; gap: var(--cds-gap-lg); border-bottom: 1px solid var(--color-border-line); overflow-x: auto; }
+#dash-root .bt-tab { font: inherit; font-size: var(--cds-font-size-heading); background: none; border: 0; border-bottom: 2px solid transparent; padding: var(--cds-pad-sm) 0; color: var(--color-fg-muted); cursor: pointer; white-space: nowrap; }
+#dash-root .bt-tab[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); }
+#dash-root .bt-tab:focus-visible, #dash-root .bt-chip:focus-visible, #dash-root .bt-select:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+#dash-root .bt-page { display: grid; gap: var(--cds-gap-lg); }
+#dash-root .bt-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-md); align-content: start; min-width: 0; }
+#dash-root .bt-row { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; justify-content: space-between; }
+#dash-root .bt-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+#dash-root .bt-seg { display: inline-flex; background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 2px; }
+#dash-root .bt-chip { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 0; border-radius: calc(var(--cds-radius) - 2px); background: none; color: var(--color-fg-muted); cursor: pointer; white-space: nowrap; }
+#dash-root .bt-chip[aria-pressed="true"] { background: var(--color-panel); color: var(--color-fg); box-shadow: 0 0 0 1px var(--color-border-line); }
+#dash-root .bt-select, #dash-root .bt-search { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); min-width: 0; }
+#dash-root .bt-search { flex: 1 1 12rem; }
+#dash-root .bt-typebar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-lg); align-items: center; }
+#dash-root .bt-typegroup { display: flex; flex-wrap: wrap; gap: var(--cds-gap-xs); align-items: center; }
+#dash-root .bt-typegroup > span { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); letter-spacing: .06em; text-transform: uppercase; margin-right: var(--cds-gap-xs); }
+#dash-root .bt-type { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: 999px; background: var(--color-bg); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+#dash-root .bt-type[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
+#dash-root .bt-type:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+#dash-root .bt-mark { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); margin-right: var(--cds-gap-sm); vertical-align: middle; }
+#dash-root .bt-mark input[type=checkbox] { width: 1rem; height: 1rem; accent-color: var(--color-ok); cursor: pointer; }
+#dash-root .bt-mark input[type=text] { width: 3.6rem; font: inherit; font-size: var(--cds-font-size-caption); padding: 0 var(--cds-pad-xs); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+#dash-root .bt-mark input[type=number] { width: 3.2rem; font: inherit; font-size: var(--cds-font-size-caption); padding: 0 var(--cds-pad-xs); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
+#dash-root tr.bt-marked td { background: color-mix(in srgb, var(--color-ok) 10%, transparent); }
+#dash-root .bt-scope .bt-chip { font-size: var(--cds-font-size-body); padding: var(--cds-pad-sm) var(--cds-pad-md); font-weight: var(--cds-font-weight-medium); }
+#dash-root .bt-cards { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+#dash-root .bt-swatch { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: var(--cds-gap-xs); vertical-align: baseline; }
+#dash-root .bt-note { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+#dash-root .bt-tiles { display: grid; gap: var(--cds-gap-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); }
+#dash-root .bt-tile { display: grid; gap: var(--cds-gap-xs); padding: var(--cds-pad-md); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); }
+#dash-root .bt-tile .bt-k { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); letter-spacing: .06em; text-transform: uppercase; }
+#dash-root .bt-big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; line-height: 1.1; }
+#dash-root .bt-stats { display: flex; flex-wrap: wrap; gap: var(--cds-gap-lg); font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+#dash-root .bt-stats b { font-weight: var(--cds-font-weight-medium); }
+#dash-root .bt-stats .bt-muted { color: var(--color-fg-muted); }
+#dash-root .bt-good { color: var(--color-ok); }
+#dash-root .bt-bad { color: var(--color-bad); }
+#dash-root .bt-chart { position: relative; min-height: 16rem; }
+#dash-root .bt-chart svg { display: block; overflow: visible; }
+#dash-root .bt-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 2; }
+#dash-root .bt-tip .bt-tip-h { color: var(--cds-text-secondary); }
+#dash-root .bt-scroll { overflow: auto; max-height: 40rem; }
+#dash-root .bt-table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+#dash-root .bt-table th { position: sticky; top: 0; z-index: 1; background: var(--color-panel); text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border-line); padding: var(--cds-pad-xs) var(--cds-pad-sm); white-space: nowrap; }
+#dash-root .bt-table th button { all: unset; cursor: pointer; }
+#dash-root .bt-table th button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+#dash-root .bt-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; vertical-align: middle; }
+#dash-root .bt-table .bt-r { text-align: right; }
+#dash-root .bt-table .bt-c { text-align: center; }
+#dash-root .bt-table tr.bt-click { cursor: pointer; }
+#dash-root .bt-table tr.bt-click:hover td { background: var(--color-bg); }
+#dash-root .bt-player { display: grid; gap: 2px; }
+#dash-root .bt-player b { font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-body); }
+#dash-root .bt-sub { color: var(--color-fg-muted); }
+#dash-root .bt-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { #dash-root .bt-split { grid-template-columns: minmax(0, 1fr); } }
+#dash-root .bt-h3 { margin: 0 0 8px; font-size: var(--cds-font-size-caption); font-weight: 600; color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .04em; }
+#dash-root .bt-pill { display: inline-block; padding: 0 var(--cds-pad-sm); border-radius: 999px; border: 1px solid var(--color-border-line); font-size: var(--cds-font-size-caption); }
+#dash-root .bt-pill.W { color: var(--color-ok); }
+#dash-root .bt-pill.L { color: var(--color-bad); }
+#dash-root .bt-pill.P, #dash-root .bt-pill.void, #dash-root .bt-pill.open { color: var(--color-fg-muted); }
+#dash-root .bt-tag { font-size: var(--cds-font-size-caption); color: var(--color-warn); margin-left: var(--cds-gap-xs); }
+#dash-root .bt-pick-over { color: var(--color-ok); font-weight: var(--cds-font-weight-medium); }
+#dash-root .bt-pick-under { color: var(--color-bad); font-weight: var(--cds-font-weight-medium); }
+#dash-root .bt-stars { letter-spacing: 1px; color: var(--color-warn); }
+#dash-root .bt-stars i { color: var(--color-border-line); font-style: normal; }
+#dash-root .bt-heat { border-radius: 4px; padding: 2px var(--cds-pad-sm); display: inline-block; min-width: 3.2em; text-align: center; }
+#dash-root .bt-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+#dash-root .bt-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); min-height: inherit; }
+#dash-root .bt-fail.bt-err::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+#dash-root [data-dash-source-state=empty] { color: transparent; }
+#dash-root [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+@media (max-width: 40rem) { #dash-root .bt-hide-narrow { display: none; } }
+</style>
+
+<div class="bt">
+  <nav class="bt-tabs" role="tablist" aria-label="Sections">
+    <button class="bt-tab" role="tab" type="button" id="tab-dashboard" data-tab="dashboard" aria-selected="true">Dashboard</button>
+    <button class="bt-tab" role="tab" type="button" id="tab-analysis" data-tab="analysis" aria-selected="false">Analysis</button>
+    <button class="bt-tab" role="tab" type="button" id="tab-pool" data-tab="pool" aria-selected="false">Pool</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section class="bt-page" id="dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
+    <div class="bt-row">
+      <span class="bt-seg bt-scope" role="group" aria-label="Whose bets">
+        <button class="bt-chip" type="button" data-k="scope" data-v="mine" aria-pressed="true">My bets</button>
+        <button class="bt-chip" type="button" data-k="scope" data-v="all" aria-pressed="false">All recommended</button>
+      </span>
+      <div class="bt-controls" id="filters" aria-label="Options">
+    <span class="bt-seg" role="group" aria-label="Games">
+      <button class="bt-chip" type="button" data-k="view" data-v="all" aria-pressed="true">All games</button>
+      <button class="bt-chip" type="button" data-k="view" data-v="without_phi" aria-pressed="false">Without PHI</button>
+    </span>
+    <span class="bt-seg" role="group" aria-label="Stakes" id="stake-seg">
+      <button class="bt-chip" type="button" data-k="stake" data-v="flat" aria-pressed="true">Flat 1u</button>
+      <button class="bt-chip" type="button" data-k="stake" data-v="scaled" aria-pressed="false">EV-scaled</button>
+    </span>
+  </div>
+    </div>
+    <div class="bt-typebar" id="f-type" role="group" aria-label="Bet type" data-source="summary bets"></div>
+    <article class="bt-card" id="performance">
+      <div class="bt-row">
+        <div>
+          <h2 id="perf-title">My results</h2>
+          <p class="bt-note" id="perf-range">—</p>
+        </div>
+        <span class="bt-seg" role="group" aria-label="Time range">
+          <button class="bt-chip" type="button" data-k="window" data-v="last1" aria-pressed="false">Last week</button>
+          <button class="bt-chip" type="button" data-k="window" data-v="last4" aria-pressed="false">4 weeks</button>
+          <button class="bt-chip" type="button" data-k="window" data-v="season" aria-pressed="true">Season</button>
+        </span>
+      </div>
+      <div class="bt-tiles">
+        <div class="bt-tile"><span class="bt-k">Profit</span><span class="bt-big dash-skeleton" data-source="summary" data-field="profit" data-where="id=all|all|flat|season">—</span></div>
+        <div class="bt-tile"><span class="bt-k">Wagers</span><span class="bt-big" data-source="summary" data-field="wagers" data-where="id=all|all|flat|season">—</span></div>
+        <div class="bt-tile"><span class="bt-k">Wins</span><span class="bt-big" data-source="summary" data-field="win_pct" data-where="id=all|all|flat|season">—</span></div>
+        <div class="bt-tile"><span class="bt-k">ROI</span><span class="bt-big" data-source="summary" data-field="roi" data-where="id=all|all|flat|season">—</span></div>
+      </div>
+      <div class="bt-stats">
+        <span><b data-source="summary" data-field="bets" data-where="id=all|all|flat|season">—</b> <span class="bt-muted">bets</span></span>
+        <span><b><span data-source="summary" data-field="wins" data-where="id=all|all|flat|season">—</span>-<span data-source="summary" data-field="losses" data-where="id=all|all|flat|season">—</span>-<span data-source="summary" data-field="pushes" data-where="id=all|all|flat|season">—</span></b> <span class="bt-muted">record</span></span>
+        <span><b data-source="summary" data-field="per_week" data-where="id=all|all|flat|season">—</b> <span class="bt-muted">per week</span></span>
+      </div>
+      <div class="bt-row">
+        <span class="bt-note">Running total by graded week. The time range applies to the totals above; the chart shows the season.</span>
+        <span class="bt-seg" role="group" aria-label="Chart measure">
+          <button class="bt-chip" type="button" data-k="metric" data-v="profit" aria-pressed="true">Profit</button>
+          <button class="bt-chip" type="button" data-k="metric" data-v="roi" aria-pressed="false">ROI</button>
+        </span>
+      </div>
+      <div class="bt-chart" id="perf-chart" data-source="timeline"></div>
+    </article>
+
+    <article class="bt-card" id="by-type">
+      <h2 id="type-title">Where I bet</h2>
+      <p class="bt-note">Same range as above. Click a row to filter the page to it.</p>
+      <div class="bt-scroll">
+        <table class="bt-table" id="type-table" data-source="summary" data-row-key="id">
+          <thead><tr>
+            <th data-field="filter_name">Bet type</th><th class="bt-r" data-field="bets">Bets</th>
+            <th class="bt-r" data-field="wins">W</th><th class="bt-r" data-field="losses">L</th>
+            <th class="bt-r" data-field="win_pct">Win %</th><th class="bt-r bt-hide-narrow" data-field="wagers">Wagers</th>
+            <th class="bt-r" data-field="profit">Profit</th><th class="bt-r" data-field="roi">ROI</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="bt-note" id="type-note-mine">Your bets, ticked on the Analysis tab, graded at your stake and, where you entered it, your price.</p>
+      <p class="bt-note" id="type-note-all" hidden>A paper test: nothing is bet. ELWAY = its recommended Kalshi or sportsbook bet per game. Prop picks = up to 15 a week where Sleeper's projection beats the market by 8+ points and the player's recent games and the matchup agree (no anytime TDs). EV-scaled stakes apply to ELWAY's bets (EV ÷ 0.15, capped 0.5–2u); props stay at 1u.</p>
+    </article>
+    <article class="bt-card" id="bets">
+      <div class="bt-row">
+        <h2>Bets</h2>
+        <span class="bt-note">The bets behind the numbers above: same bet type, games and stakes.</span>
+      </div>
+      <div class="bt-controls">
+        <select class="bt-select" id="b-week" aria-label="Week"></select>
+        <select class="bt-select" id="b-result" aria-label="Result">
+          <option value="">All results</option><option value="W">Won</option><option value="L">Lost</option>
+          <option value="P">Push</option><option value="open">Open</option><option value="void">Void</option>
+        </select>
+        <input class="bt-search" id="b-search" type="search" placeholder="Search player, team, game" aria-label="Search bets">
+      </div>
+      <p class="bt-note" id="b-count">—</p>
+      <div class="bt-scroll">
+        <table class="bt-table" id="bet-table" data-source="bets" data-row-key="id">
+          <thead><tr>
+            <th class="bt-r" data-field="week">Wk</th><th data-field="bet">Bet</th><th class="bt-hide-narrow" data-field="game">Game</th>
+            <th class="bt-hide-narrow" data-field="type_name">Type</th><th class="bt-r" data-field="price">Price</th>
+            <th class="bt-r" data-field="ev">EV</th><th class="bt-r" data-field="stake">Stake</th>
+            <th data-field="result">Result</th><th class="bt-r" data-field="pnl">P&amp;L</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <!-- ANALYSIS -->
+  <section class="bt-page" id="analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+    <div class="bt-row">
+      <h1 id="an-title">Week <span data-source="props_week" data-field="week" data-row="0">—</span> recommendations</h1>
+      <span class="bt-seg" role="group" aria-label="Sheet">
+        <button class="bt-chip" type="button" data-k="sheet" data-v="props" aria-pressed="true">Player props</button>
+        <button class="bt-chip" type="button" data-k="sheet" data-v="games" aria-pressed="false">Game bets (ELWAY)</button>
+      </span>
+    </div>
+
+    <article class="bt-card" id="props-sheet">
+      <div class="bt-controls">
+        <span class="bt-seg" role="group" aria-label="Signal">
+          <button class="bt-chip" type="button" data-k="psig" data-v="pick" aria-pressed="true">Picks</button>
+          <button class="bt-chip" type="button" data-k="psig" data-v="all" aria-pressed="false">All flags</button>
+          <button class="bt-chip" type="button" data-k="psig" data-v="PROJ" aria-pressed="false">Sleeper flags</button>
+          <button class="bt-chip" type="button" data-k="psig" data-v="SHOP" aria-pressed="false">Line shop</button>
+        </span>
+        <select class="bt-select" id="p-market" aria-label="Prop market"><option value="">All props</option></select>
+        <input class="bt-search" id="p-search" type="search" placeholder="Search player, team" aria-label="Search props">
+      </div>
+      <p class="bt-note"><b>Lines as of <span data-source="props_week" data-field="as_of" data-row="0">—</span></b> (best price across six books then; check your book before betting). Picks get a fresh price Sunday at 10 am ET, in the <b>Sun 10 am</b> column (the best book at the same line, or the line it moved to). Tick <b>Bet</b> on what you actually bet, set your stake in units and, if you got a different price, type it in the box beside it (blank = the listed price): it's saved here and shows up as "My bets" on the Dashboard after the next refresh. <span id="mine-count"></span></p>
+      <p class="bt-note">Picks = the up-to-15 you'd bet: Sleeper flags where his last 8 games beat this line at least half the time and the matchup favours the pick, no anytime TDs, biggest Sleeper edges first. Weeks 4–5: <span data-source="summary" data-field="wins" data-where="id=prop_pick|all|flat|season">—</span>-<span data-source="summary" data-field="losses" data-where="id=prop_pick|all|flat|season">—</span> (the rules were chosen on those weeks, so this is a lead to keep testing). Price and book = the best line across six books: that's where to place it.</p>
+      <p class="bt-note">Proj. = Sleeper's projection (market's implied average below it); diff = Sleeper minus the line. Rating = how far Sleeper is from the market (8–12 pts ★ … 30+ ★★★★★); on its own it isn't an edge (all Sleeper flags are close to break-even). Big ratings are often injuries: check the tag. Opp vs prop = the opponent's rank in what it allows for this stat (1 = allows least). Hit rates = how often his past games beat this line on this side.</p>
+      <div class="bt-scroll">
+        <table class="bt-table" id="props-table" data-source="props_week" data-row-key="id">
+          <thead><tr>
+            <th data-field="player">Player</th><th data-field="prop">Prop</th><th data-field="pick">Pick</th>
+            <th class="bt-r" data-field="price">Price</th><th data-field="book">Book</th><th class="bt-hide-narrow" data-field="sunday">Sun 10 am</th><th class="bt-r" data-field="slp_proj">Proj.</th>
+            <th class="bt-r" data-field="proj_diff">Proj. diff</th><th class="bt-c" data-field="rating">Rating</th>
+            <th class="bt-r" data-field="ev_slp">Proj. EV</th><th class="bt-c" data-field="opp_rank">Opp vs prop</th>
+            <th class="bt-c" data-field="hit_l5">L-5</th><th class="bt-c" data-field="hit_l10">L-10</th>
+            <th class="bt-c" data-field="hit_season">Season</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="bt-card" id="games-sheet" hidden>
+      <div class="bt-controls">
+        <span class="bt-seg" role="group" aria-label="Which bets">
+          <button class="bt-chip" type="button" data-k="gall" data-v="rec" aria-pressed="true">Recommended</button>
+          <button class="bt-chip" type="button" data-k="gall" data-v="all" aria-pressed="false">Every flagged bet</button>
+        </span>
+      </div>
+      <p class="bt-note"><b>Prices as of <span data-source="games_week" data-field="as_of" data-row="0">—</span></b> (Kalshi asks then; sportsbook prices are nflverse's consensus line). Tick <b>Bet</b> on what you actually bet; add your stake and, if different, your price (Kalshi in cents, e.g. 38).</p>
+      <p class="bt-note">ELWAY's simulated margins priced against Kalshi and the sportsbooks. One recommended bet per game: the best EV. Market = what the price implies (Kalshi: the cost including the fee). Scaled stake = EV ÷ 0.15, capped 0.5–2u. ELWAY has rated PHI above the market every week since week 4; those bets are tagged.</p>
+      <div class="bt-scroll">
+        <table class="bt-table" id="games-table" data-source="games_week" data-row-key="id">
+          <thead><tr>
+            <th data-field="game">Game</th><th class="bt-hide-narrow" data-field="kickoff">Kickoff</th>
+            <th data-field="bet">Bet</th><th class="bt-hide-narrow" data-field="type_name">Type</th>
+            <th class="bt-r" data-field="price">Price</th><th class="bt-hide-narrow" data-field="where">Where</th>
+            <th class="bt-r" data-field="elway_p">ELWAY</th><th class="bt-r" data-field="cost">Market</th>
+            <th class="bt-r" data-field="ev">EV</th><th class="bt-r" data-field="stake_scaled">Scaled stake</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+  <!-- POOL -->
+  <section class="bt-page" id="pool" role="tabpanel" aria-labelledby="tab-pool" hidden>
+    <article class="bt-card" id="pool-me" data-source="pool_standings">
+      <div>
+        <h2 id="pool-me-title">My standing</h2>
+        <p class="bt-note" id="pool-me-note">—</p>
+      </div>
+      <div class="bt-tiles" id="pool-me-tiles"></div>
+      <div class="bt-chart" id="pool-field" style="min-height:7rem"></div>
+      <p class="bt-note">Every entrant's points (one dot each); yours is highlighted. Updated from the pool's sheet: send a new screenshot to update it.</p>
+    </article>
+
+    <article class="bt-card" id="pool-standings">
+      <div>
+        <h2>Pool: five picks a week against the pool's spread</h2>
+        <p class="bt-note">Graded at the pool's line, the same sheet for every entrant. A coin flip goes 2.5-2.5 a week; there's no vig in a pool.</p>
+      </div>
+      <div class="bt-cards" id="pool-cards" data-source="pool_weekly"></div>
+      <div class="bt-chart" id="pool-chart" data-source="pool_weekly pool_field"></div>
+      <p class="bt-note">Wins above or below a coin flip (2.5 a week), running total by week. You = your submitted picks; Model = pool.py's top 5; Claude = picks made in a separate conversation. Grey = every other entrant, graded the same way; dark grey = the pool's leader.</p>
+    </article>
+
+    <article class="bt-card" id="pool-picks">
+      <div class="bt-row">
+        <h2>Picks</h2>
+        <select class="bt-select" id="pool-week" aria-label="Week"></select>
+      </div>
+      <div class="bt-scroll">
+        <table class="bt-table" id="pool-pick-table" data-source="pool_picks" data-row-key="id">
+          <thead><tr>
+            <th data-field="card">Card</th><th data-field="pick">Pick</th><th class="bt-hide-narrow" data-field="game">Game</th>
+            <th class="bt-r" data-field="value">Value</th><th data-field="result">Result</th>
+            <th class="bt-r" data-field="margin">Final</th><th class="bt-r bt-hide-narrow" data-field="closing_line">Close</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="bt-note">Value = points the pool's line was off the market on that side when picked (the model's main edge). Final = home margin; Close = the market's closing line (home perspective, negative = home favored).</p>
+    </article>
+
+    <article class="bt-card" id="pool-team-plots">
+      <div class="bt-row"><h2>Teams: covers and the field's picks</h2></div>
+      <div class="bt-split">
+        <div><h3 class="bt-h3">Against the pool's spread</h3><div class="bt-chart" id="pool-ats-strip" data-source="pool_teams"></div></div>
+        <div><h3 class="bt-h3">Picked by the pool (all entrants)</h3><div class="bt-chart" id="pool-team-scatter" data-source="pool_teams"></div></div>
+      </div>
+      <p class="bt-note">Left: each team's record at the pool's line. Right: how often the whole pool picked a team and the picks won minus lost on it; dashed lines are every pick winning or every pick losing.</p>
+    </article>
+
+    <article class="bt-card" id="pool-teams">
+      <div class="bt-row">
+        <h2>Teams against the spread</h2>
+        <input class="bt-search" id="pool-team-search" type="search" placeholder="Search team" aria-label="Search teams">
+      </div>
+      <div class="bt-scroll">
+        <table class="bt-table" id="pool-team-table" data-source="pool_teams" data-row-key="team">
+          <thead><tr>
+            <th data-field="team">Team</th><th class="bt-r" data-field="games">Games</th>
+            <th class="bt-r" data-field="ats_wins">ATS W</th><th class="bt-r" data-field="ats_losses">ATS L</th>
+            <th class="bt-r" data-field="ats_pct">Cover %</th><th class="bt-r" data-field="avg_cover">Avg cover</th>
+            <th class="bt-r bt-hide-narrow" data-field="home_ats">Home</th><th class="bt-r bt-hide-narrow" data-field="away_ats">Away</th>
+            <th class="bt-r bt-hide-narrow" data-field="close_wins">vs close W</th><th class="bt-r bt-hide-narrow" data-field="close_losses">vs close L</th>
+            <th class="bt-r" data-field="su_wins">SU W</th><th class="bt-r" data-field="su_losses">SU L</th>
+            <th class="bt-r" data-field="field_picks">Picked</th><th class="bt-r" data-field="field_wins">Picks W</th>
+            <th class="bt-r" data-field="field_losses">Picks L</th><th class="bt-r" data-field="field_net">Net</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="bt-note">Every game on the pool's board this season, each team's side: at the pool's line (ATS) and at the market's closing line (vs close). Avg cover = points a game the team beat the pool's spread by. Seven games is a small sample: covers are mostly noise. Picked = how many times the pool's entrants took the team; Picks W/L = those picks won and lost; Net = W − L.</p>
+    </article>
+  </section>
+</div>
+
+<script>
+window.bt = (() => {
+  const state = { tab: 'dashboard', scope: 'mine', type: 'mine', view: 'all', stake: 'flat', window: 'season', metric: 'profit', sheet: 'props', psig: 'pick', gall: 'rec' };
+  const listeners = [];
+  const set = (k, v) => { state[k] = v; listeners.forEach((f) => f()); };
+  const fmt = {
+    u: (v) => (v == null || isNaN(v) ? '—' : `${d3.format('+.2f')(v).replace('-', '−')}u`),
+    u0: (v) => (v == null || isNaN(v) ? '—' : `${d3.format('.2f')(v)}u`),
+    pct: (v) => (v == null || isNaN(v) ? '—' : d3.format('.1%')(v)),
+    spct: (v) => (v == null || isNaN(v) ? '—' : d3.format('+.1%')(v).replace('-', '−')),
+    p0: (v) => (v == null || isNaN(v) ? '—' : d3.format('.0%')(v)),
+    ord: (n) => { if (n == null) return '—'; const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); },
+  };
+  const tip = (box) => {
+    let t = box.querySelector('.bt-tip');
+    if (!t) { t = document.createElement('div'); t.className = 'bt-tip'; t.hidden = true; box.appendChild(t); }
+    return {
+      show(ev, head, lines) {
+        t.replaceChildren();
+        const h = document.createElement('div'); h.className = 'bt-tip-h'; h.textContent = head; t.appendChild(h);
+        lines.forEach((l) => { const d = document.createElement('div'); d.textContent = l; t.appendChild(d); });
+        t.hidden = false;
+        const r = box.getBoundingClientRect();
+        t.style.left = Math.max(0, Math.min(r.width - t.offsetWidth, ev.clientX - r.left + 12)) + 'px';
+        t.style.top = Math.max(0, ev.clientY - r.top - t.offsetHeight - 8) + 'px';
+      },
+      hide() { t.hidden = true; },
+    };
+  };
+  const table = (tbl, rows, cells, keyOf, onRow) => {
+    const tbody = tbl.querySelector('tbody');
+    const st = tbl._sort || (tbl._sort = { key: null, dir: 1 });
+    tbl.querySelectorAll('th').forEach((th) => {
+      if (th.querySelector('button')) return;
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = th.textContent; th.replaceChildren(b);
+      b.addEventListener('click', () => {
+        const f = th.dataset.field;
+        st.dir = st.key === f ? -st.dir : (typeof tbl._rows()[0]?.[f] === 'number' ? -1 : 1);
+        st.key = f; tbl._draw();
+      });
+    });
+    tbl._rows = rows;
+    tbl._draw = () => {
+      const r = rows().slice();
+      if (st.key) r.sort((a, b) => {
+        const x = a[st.key], y = b[st.key];
+        if (x == null) return 1; if (y == null) return -1;
+        return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * st.dir;
+      });
+      tbl.querySelectorAll('th').forEach((th) => th.setAttribute('aria-sort', th.dataset.field === st.key ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'));
+      tbody.replaceChildren(...r.map((row) => {
+        const tr = document.createElement('tr'); tr.dataset.key = keyOf(row);
+        cells.forEach(([f, show, cls]) => {
+          const td = document.createElement('td'); if (cls) td.className = cls;
+          const out = show(row[f], row);
+          if (out instanceof Node) td.appendChild(out); else td.textContent = out;
+          tr.appendChild(td);
+        });
+        if (onRow) onRow(tr, row);
+        return tr;
+      }));
+    };
+    tbl._draw();
+  };
+  const message = (box, text, err) => {
+    box.querySelectorAll('svg, .bt-fail').forEach((s) => s.remove());
+    if (!text) return;
+    const f = document.createElement('div'); f.className = 'bt-fail' + (err ? ' bt-err' : ''); f.textContent = text; box.appendChild(f);
+  };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const num = (v) => (v == null || v === '' ? null : +v);
+  return { state, set, onChange: (f) => listeners.push(f), fmt, tip, table, message, el, num };
+})();
+
+// tabs, segmented controls, links
+(() => {
+  const { state, set } = window.bt;
+  const tabs = document.querySelectorAll('#dash-root .bt-tab');
+  const show = (name) => {
+    tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    ['dashboard', 'analysis', 'pool'].forEach((n) => { document.getElementById(n).hidden = n !== name; });
+    dash.setLink(name);
+    set('tab', name);
+  };
+  tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.tab)));
+  document.querySelectorAll('#dash-root .bt-chip[data-k]').forEach((c) => c.addEventListener('click', () => {
+    document.querySelectorAll(`#dash-root .bt-chip[data-k="${c.dataset.k}"]`).forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+    if (c.dataset.k === 'scope') {                   // My bets <-> All recommended
+      state.type = c.dataset.v;
+      if (c.dataset.v === 'mine') {                  // your bets are at your stakes: no EV scaling
+        state.stake = 'flat';
+        document.querySelectorAll('#dash-root .bt-chip[data-k="stake"]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === 'flat')));
+      }
+    }
+    set(c.dataset.k, c.dataset.v);
+  }));
+  window.bt.onChange(() => {
+    document.getElementById('stake-seg').hidden = state.scope === 'mine';
+    document.getElementById('perf-title').textContent = state.scope === 'mine' ? 'My results' : 'Recommended bets';
+    document.getElementById('type-title').textContent = state.scope === 'mine' ? 'Where I bet' : 'By bet type';
+    document.getElementById('type-note-all').hidden = state.scope === 'mine';
+    document.getElementById('type-note-mine').hidden = state.scope !== 'mine';
+    document.getElementById('props-sheet').hidden = state.sheet !== 'props';
+    document.getElementById('games-sheet').hidden = state.sheet !== 'games';
+  });
+  const named = location.hash.slice(1);
+  if (named === 'analysis' || named === 'pool') show(named);
+  set('scope', state.scope);                        // apply the starting view (My bets) to the controls
+})();
+</script>
+
+<script>
+// shared filters + dashboard tiles
+(() => {
+  const { state, set, fmt } = window.bt;
+  const bar = document.getElementById('f-type');
+  const GROUPS_ALL = [['', ['all']], ['ELWAY', ['elway', 'kalshi_win', 'book_ml', 'kalshi_spread', 'book_spread', 'pair']], ['Props', ['prop_pick']]];
+  const GROUPS_MINE = [['', ['mine', 'mine_kalshi', 'mine_book', 'mine_prop']]];
+  const SHORT = { all: 'All recommended', mine: 'All my bets', mine_kalshi: 'Kalshi', mine_book: 'Sportsbooks', mine_prop: 'Props', elway: 'All', props: 'All', kalshi_win: 'Kalshi win', book_ml: 'Book moneyline', kalshi_spread: 'Kalshi spread',
+    book_spread: 'Book spread', pair: 'Win vs spread pair', prop_pick: 'Picks' };
+  const key = () => `${state.type}|${state.view}|${state.stake}|${state.window}`;
+  const draw = () => {
+    const d = dash.data('summary');
+    const rows = d.status === 'ok' ? d.data : [];
+    // bet-type choices: every filter with bets in this view
+    const have = new Set(rows.filter((r) => r.view === 'all' && r.stake === 'flat' && r.window === 'season').map((r) => r.filter));
+    const bd = dash.data('bets');                    // types with open bets only (e.g. My bets before grading)
+    if (bd.status === 'ok') bd.data.forEach((r) => have.add(r.type));
+    bar.replaceChildren(...(state.scope === 'mine' ? GROUPS_MINE : GROUPS_ALL).map(([label, keys]) => {
+      const g = document.createElement('div'); g.className = 'bt-typegroup';
+      if (label) { const l = document.createElement('span'); l.textContent = label; g.appendChild(l); }
+      keys.filter((k) => have.has(k)).forEach((k) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'bt-type';
+        b.textContent = SHORT[k] || k; b.setAttribute('aria-pressed', String(state.type === k));
+        b.addEventListener('click', () => set('type', k));
+        g.appendChild(b);
+      });
+      return g;
+    }).filter((g) => g.querySelector('button')));
+    const by = Object.fromEntries(rows.map((r) => [r.id, r]));
+    const r = by[key()];
+    document.querySelectorAll('#performance [data-source="summary"]').forEach((e) => {
+      e.dataset.where = `id=${key()}`;
+      e.classList.toggle('dash-skeleton', d.status === 'loading');
+      const f = e.dataset.field, v = r ? r[f] : null;
+      e.classList.remove('bt-good', 'bt-bad');
+      if (v == null) { e.textContent = '—'; return; }
+      if (f === 'profit' || f === 'per_week') { e.textContent = fmt.u(+v); e.classList.add(+v >= 0 ? 'bt-good' : 'bt-bad'); }
+      else if (f === 'wagers') e.textContent = fmt.u0(+v);
+      else if (f === 'win_pct') e.textContent = fmt.pct(+v);
+      else if (f === 'roi') { e.textContent = fmt.spct(+v); e.classList.add(+v >= 0 ? 'bt-good' : 'bt-bad'); }
+      else e.textContent = v;
+    });
+    document.getElementById('perf-range').textContent = r
+      ? `${r.filter_name} · week${r.first_week === r.last_week ? ` ${r.first_week}` : `s ${r.first_week}–${r.last_week}`}${state.view === 'without_phi' ? ' · without PHI games' : ''} · ${state.stake === 'flat' ? 'flat 1u stakes' : 'EV-scaled stakes'}`
+      : (state.scope === 'mine' ? 'Your bets are graded after the games: see them in the list below' : 'No graded bets for this filter yet');
+    // sleeper-pick record in the props note
+    document.querySelectorAll('#props-sheet [data-source="summary"]').forEach((e) => {
+      const rr = by[e.dataset.where.replace('id=', '')]; e.textContent = rr ? rr[e.dataset.field] : '—';
+    });
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// performance chart: running profit or ROI by week
+(() => {
+  const { state, tip, message, fmt } = window.bt;
+  const box = document.getElementById('perf-chart');
+  const tt = tip(box);
+  const draw = () => {
+    if (state.tab !== 'dashboard') return;
+    const d = dash.data('timeline');
+    box.classList.toggle('dash-skeleton', d.status === 'loading');
+    if (d.status !== 'ok') { message(box, d.status === 'error' || d.status === 'connect' ? 'Failed to load' : '', true); return; }
+    message(box, '');
+    const rows = d.data.filter((r) => r.filter === state.type && r.view === state.view && r.stake === state.stake)
+      .map((r) => ({ ...r, week: +r.week, cum_profit: +r.cum_profit, cum_roi: r.cum_roi == null ? null : +r.cum_roi, profit: +r.profit, cum_wagers: +r.cum_wagers }))
+      .sort((a, b) => a.week - b.week);
+    if (!rows.length) { message(box, 'No graded bets for this filter yet'); return; }
+    const k = state.metric === 'roi' ? 'cum_roi' : 'cum_profit';
+    const pts = [{ week: rows[0].week - 1, [k]: 0, start: true }, ...rows];
+    const W = box.clientWidth, H = 260, m = { t: 12, r: 52, b: 28, l: 8 };
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleLinear(d3.extent(pts, (p) => p.week), [m.l, W - m.r]);
+    const y = d3.scaleLinear(d3.extent([0, ...pts.map((p) => p[k])]), [H - m.b, m.t]).nice(4);
+    const c = dash.colors[0];
+    const gid = 'bt-area-grad';
+    const grad = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    [[0, .26], [.25, .16], [.5, .08], [.75, .03], [1, 0]].forEach(([o, a]) => grad.append('stop').attr('offset', o).attr('style', `stop-color:${c};stop-opacity:${a}`));
+    y.ticks(4).forEach((v) => {
+      svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', v === 0 ? 'var(--cds-chart-reference)' : 'var(--cds-chart-grid)');
+      svg.append('text').attr('x', W - m.r + 8).attr('y', y(v)).attr('dy', '0.35em').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)')
+        .text(k === 'cum_roi' ? d3.format('+.0%')(v).replace('-', '−') : d3.format('+d')(v).replace('-', '−'));
+    });
+    svg.append('path').datum(pts).attr('d', d3.area().x((p) => x(p.week)).y0(y(0)).y1((p) => y(p[k]))).attr('fill', `url(#${gid})`);
+    svg.append('path').datum(pts).attr('d', d3.line().x((p) => x(p.week)).y((p) => y(p[k]))).attr('fill', 'none').attr('stroke', c)
+      .attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    svg.append('g').selectAll('text').data(pts).join('text').attr('x', (p) => x(p.week)).attr('y', H - 8).attr('text-anchor', (p, i) => (i === 0 ? 'start' : i === pts.length - 1 ? 'end' : 'middle'))
+      .attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((p) => (p.start ? 'Start' : `Wk ${p.week}`));
+    const dot = svg.append('circle').attr('r', 4.5).attr('fill', c).attr('visibility', 'hidden');
+    svg.append('rect').attr('x', m.l).attr('y', 0).attr('width', W - m.r - m.l).attr('height', H - m.b).attr('fill', 'transparent')
+      .on('mousemove', (ev) => {
+        const [mx] = d3.pointer(ev);
+        const p = rows.reduce((a, b) => (Math.abs(x(b.week) - mx) < Math.abs(x(a.week) - mx) ? b : a));
+        dot.attr('cx', x(p.week)).attr('cy', y(p[k])).attr('visibility', 'visible');
+        tt.show(ev, `Through week ${p.week}`, [`Profit ${fmt.u(p.cum_profit)} (week ${fmt.u(p.profit)})`, `ROI ${fmt.spct(p.cum_roi)} on ${fmt.u0(p.cum_wagers)} wagered`]);
+      })
+      .on('mouseleave', () => { tt.hide(); dot.attr('visibility', 'hidden'); });
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// by bet type
+(() => {
+  const { state, set, fmt, table } = window.bt;
+  const tbl = document.getElementById('type-table');
+  let rows = [];
+  const cells = [['filter_name', String], ['bets', String, 'bt-r'], ['wins', String, 'bt-r'], ['losses', String, 'bt-r'],
+    ['win_pct', fmt.pct, 'bt-r'], ['wagers', fmt.u0, 'bt-r bt-hide-narrow'], ['profit', fmt.u, 'bt-r'], ['roi', fmt.spct, 'bt-r']];
+  const draw = () => {
+    const d = dash.data('summary');
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    const mineRow = (f) => f === 'mine' || f.startsWith('mine_');
+    rows = (d.status === 'ok' ? d.data : []).filter((r) => r.view === state.view && r.stake === state.stake && r.window === state.window
+      && mineRow(r.filter) === (state.scope === 'mine'))
+      .map((r) => ({ ...r, bets: +r.bets, wins: +r.wins, losses: +r.losses, win_pct: window.bt.num(r.win_pct), wagers: +r.wagers, profit: +r.profit, roi: window.bt.num(r.roi) }));
+    table(tbl, () => rows, cells, (r) => r.id, (tr, r) => {
+      tr.classList.add('bt-click');
+      if (r.filter === state.type) tr.style.fontWeight = 'var(--cds-font-weight-medium)';
+      tr.addEventListener('click', () => set('type', r.filter));
+    });
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// bets list
+(() => {
+  const { state, fmt, table, el } = window.bt;
+  const tbl = document.getElementById('bet-table');
+  const week = document.getElementById('b-week'), result = document.getElementById('b-result'), search = document.getElementById('b-search');
+  const count = document.getElementById('b-count');
+  const groups = { all: ['kalshi_win', 'book_ml', 'kalshi_spread', 'book_spread', 'pair', 'prop_pick'], elway: ['kalshi_win', 'book_ml', 'kalshi_spread', 'book_spread', 'pair'], mine: ['mine_kalshi', 'mine_book', 'mine_prop'] };
+  let all = [];
+  const shown = () => {
+    const q = search.value.trim().toLowerCase();
+    const types = state.type in groups ? groups[state.type] : [state.type];
+    return all.filter((r) => (!types || types.includes(r.type)) && (state.view === 'all' || !r.phi)
+      && (!week.value || r.week === +week.value) && (!result.value || r.result === result.value)
+      && (!q || `${r.bet} ${r.game}`.toLowerCase().includes(q)));
+  };
+  const mine = (r) => r.type && r.type.startsWith('mine');
+  const dollars = (v, sign) => (v == null ? '' : `${sign && v > 0 ? '+' : v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`);
+  // your bets: your actual stake (Kalshi: what you paid, in dollars and units); recommended: 1u flat or EV-scaled
+  const stakeCell = (v, r) => (mine(r)
+    ? (r.stake_dollars != null ? `${dollars(r.stake_dollars)} (${fmt.u0(r.stake)})` : fmt.u0(r.stake))
+    : fmt.u0(state.stake === 'flat' ? 1 : r.stake_scaled));
+  const pnlCell = (v, r) => (mine(r)
+    ? (r.pnl_dollars != null ? `${dollars(r.pnl_dollars, true)} (${fmt.u(r.pnl)})` : fmt.u(r.pnl))
+    : fmt.u(state.stake === 'flat' ? r.pnl : r.scaled_pnl));
+  const pill = (v) => el('span', `bt-pill ${v}`, { W: 'Won', L: 'Lost', P: 'Push', void: 'Void', open: 'Open' }[v] || v);
+  const betCell = (v, r) => { const s = el('span', null, v); if (r.phi) s.appendChild(el('span', 'bt-tag', 'PHI')); return s; };
+  const cells = [['week', String, 'bt-r'], ['bet', betCell], ['game', String, 'bt-hide-narrow'], ['type_name', String, 'bt-hide-narrow'],
+    ['price', String, 'bt-r'], ['ev', (v) => (v == null ? '—' : d3.format('+.2f')(v)), 'bt-r'],
+    ['stake', stakeCell, 'bt-r'], ['result', pill], ['pnl', pnlCell, 'bt-r']];
+  [week, result].forEach((s) => s.addEventListener('change', () => tbl._draw && draw()));
+  search.addEventListener('input', () => draw());
+  const draw = () => {
+    if (state.tab !== 'dashboard') return;
+    const d = dash.data('bets');
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    all = d.status === 'ok' ? d.data.map((r) => ({ ...r, week: +r.week, ev: window.bt.num(r.ev), stake_scaled: +r.stake_scaled, pnl: window.bt.num(r.pnl), scaled_pnl: window.bt.num(r.scaled_pnl), stake: +r.stake,
+      stake_dollars: window.bt.num(r.stake_dollars), pnl_dollars: window.bt.num(r.pnl_dollars), phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
+    const weeks = [...new Set(all.map((r) => r.week))].sort((a, b) => b - a);
+    if (week.options.length !== weeks.length + 1) week.replaceChildren(new Option('All weeks', ''), ...weeks.map((w) => new Option(`Week ${w}`, w)));
+    const rows = shown();
+    const g = rows.filter((r) => ['W', 'L', 'P'].includes(r.result));
+    const p = d3.sum(g, (r) => (state.stake === 'flat' ? r.pnl : r.scaled_pnl));
+    count.textContent = `${rows.length} bets shown · ${g.filter((r) => r.result === 'W').length}-${g.filter((r) => r.result === 'L').length}-${g.filter((r) => r.result === 'P').length} graded · ${fmt.u(p)}`;
+    table(tbl, shown, cells, (r) => r.id);
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// "my bets": ticks on the Analysis tab, saved to this dashboard's store (mybets/<id>)
+window.btMine = (() => {
+  const marks = new Map();                 // bet id -> stored doc
+  const listeners = [];
+  let db = null, ready = false, failed = false;
+  const docId = (s) => {
+    let h = 5381; for (const c of s) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0;
+    return s.replace(/[^A-Za-z0-9_\-.~:@+]/g, '_').slice(0, 150) + '-' + h.toString(36);
+  };
+  const notify = () => listeners.forEach((f) => f());
+  (async () => {
+    try { db = window.claude ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (!db) { failed = true; notify(); return; }
+    db.collection('mybets').onSnapshot((snap) => {
+      marks.clear();
+      snap.docs.forEach((d) => { const v = d.data(); if (v && v.id) marks.set(`${v.kind}|${v.week}|${v.id}`, v); });
+      ready = true; notify();
+    }, () => { failed = true; notify(); });
+  })();
+  const key = (kind, row) => `${kind}|${row.week}|${row.id}`;
+  const toggle = async (kind, row, label, on, stake) => {
+    if (!db) return;
+    const ref = db.doc('mybets/' + docId(key(kind, row)));
+    try {
+      if (on) await ref.set({ id: row.id, kind, week: +row.week, stake: +stake || 1, label, price: row.price, book: row.book || row.where || null, game: row.game, at: new Date().toISOString() });
+      else await ref.delete();
+    } catch (e) { failed = true; notify(); }
+  };
+  const setField = async (kind, row, fields) => {
+    if (!db) return;
+    try { await db.doc('mybets/' + docId(key(kind, row))).update(fields); } catch (e) { /* not marked */ }
+  };
+  // a Bet tick + stake box placed at the start of a row's first cell
+  const control = (kind, row, label) => {
+    const m = marks.get(key(kind, row));
+    const wrap = document.createElement('span'); wrap.className = 'bt-mark';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!m;
+    cb.disabled = failed || !ready; cb.setAttribute('aria-label', `I bet: ${label}`);
+    const st = document.createElement('input'); st.type = 'number'; st.min = '0.1'; st.step = '0.5';
+    st.value = m ? m.stake : 1; st.hidden = !m; st.setAttribute('aria-label', 'Stake in units');
+    const pr = document.createElement('input'); pr.type = 'text'; pr.inputMode = 'decimal';
+    pr.placeholder = row.price; pr.value = m && m.price_taken ? m.price_taken : ''; pr.hidden = !m;
+    pr.setAttribute('aria-label', `Price you got (blank = ${row.price})`); pr.title = 'Price you got: American odds (-110, +150) or Kalshi cents (38). Blank = the listed price.';
+    cb.addEventListener('change', () => { st.hidden = pr.hidden = !cb.checked; toggle(kind, row, label, cb.checked, st.value); });
+    st.addEventListener('change', () => setField(kind, row, { stake: +st.value || 1 }));
+    pr.addEventListener('change', () => {
+      const v = pr.value.trim();
+      if (v && !/^[+-]?\d+(\.\d+)?¢?$/.test(v)) { pr.setCustomValidity('Use American odds like -110 or +150, or Kalshi cents like 38'); pr.reportValidity(); return; }
+      pr.setCustomValidity(''); setField(kind, row, { price_taken: v });
+    });
+    wrap.append(cb, st, pr);
+    return { wrap, marked: !!m };
+  };
+  const count = (week) => [...marks.values()].filter((v) => +v.week === +week);
+  return { onChange: (f) => listeners.push(f), control, count, status: () => (failed ? 'failed' : ready ? 'ready' : 'loading') };
+})();
+</script>
+
+<script>
+// analysis: player props sheet
+(() => {
+  const { state, fmt, table, el } = window.bt;
+  const tbl = document.getElementById('props-table');
+  const market = document.getElementById('p-market'), search = document.getElementById('p-search');
+  let all = [];
+  const heat = (v, good) => {
+    const s = el('span', 'bt-heat', v == null ? '—' : fmt.p0(v));
+    if (v != null) {
+      const share = Math.round(Math.abs(v - 0.5) * 2 * 45);
+      s.style.background = `color-mix(in srgb, var(${v >= 0.5 ? '--color-ok' : '--color-bad'}) ${share}%, transparent)`;
+    }
+    return s;
+  };
+  const player = (v, r) => {
+    const { wrap } = window.btMine.control('prop', r, `${r.player} ${r.pick} ${r.prop}`);
+    const outer = el('div'); outer.style.display = 'flex'; outer.style.alignItems = 'center';
+    const box = el('div', 'bt-player');
+    const name = el('b', null, v);
+    if (r.injury) name.appendChild(el('span', 'bt-tag', r.injury));
+    box.append(name, el('span', 'bt-sub', `${r.pos || ''}${r.team ? ' - ' + r.team : ''} · ${r.game}`));
+    outer.append(wrap, box);
+    return outer;
+  };
+  const prop = (v) => el('span', null, v);
+  const pick = (v) => el('span', /Over|Yes/.test(v) ? 'bt-pick-over' : 'bt-pick-under', v);
+  const proj = (v, r) => { const b = el('div', 'bt-player'); b.append(el('span', null, v == null ? '—' : d3.format('.1f')(v)), el('span', 'bt-sub', r.mkt_proj == null ? '' : `mkt ${d3.format('.1f')(r.mkt_proj)}`)); return b; };
+  const stars = (v) => { const s = el('span', 'bt-stars', '★'.repeat(v || 0)); s.appendChild(el('i', null, '★'.repeat(5 - (v || 0)))); s.setAttribute('aria-label', `${v || 0} of 5`); return s; };
+  const rank = (v, r) => {
+    const s = el('span', 'bt-heat', fmt.ord(v));
+    if (v != null) {
+      const soft = (v - 16.5) / 15.5;                                     // +1 = allows the most
+      const forPick = /Over|Yes/.test(r.pick) ? soft : -soft;
+      s.style.background = `color-mix(in srgb, var(${forPick >= 0 ? '--color-ok' : '--color-bad'}) ${Math.round(Math.abs(forPick) * 45)}%, transparent)`;
+    }
+    return s;
+  };
+  const cells = [['player', player], ['prop', prop], ['pick', pick], ['price', String, 'bt-r'], ['book', (v) => v || '—'], ['sunday', (v) => v || '—', 'bt-hide-narrow'],
+    ['slp_proj', proj, 'bt-r'], ['proj_diff', (v) => (v == null ? '—' : d3.format('+.1f')(v).replace('-', '−')), 'bt-r'],
+    ['rating', stars, 'bt-c'], ['ev_slp', (v) => (v == null ? '—' : d3.format('+.0%')(v).replace('-', '−')), 'bt-r'],
+    ['opp_rank', rank, 'bt-c'], ['hit_l5', heat, 'bt-c'], ['hit_l10', heat, 'bt-c'], ['hit_season', heat, 'bt-c']];
+  const shown = () => {
+    const q = search.value.trim().toLowerCase();
+    return all.filter((r) => (state.psig === 'all' || (state.psig === 'pick' ? r.is_pick : r.signal.includes(state.psig))) && (!market.value || r.prop.endsWith(market.value))
+      && (!q || `${r.player} ${r.team} ${r.game}`.toLowerCase().includes(q)));
+  };
+  market.addEventListener('change', () => draw());
+  search.addEventListener('input', () => draw());
+  window.btMine.onChange(() => draw());
+  const draw = () => {
+    if (state.tab !== 'analysis') return;
+    const d = dash.data('props_week');
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    all = d.status === 'ok' ? d.data.map((r) => ({ ...r, slp_proj: window.bt.num(r.slp_proj), mkt_proj: window.bt.num(r.mkt_proj), proj_diff: window.bt.num(r.proj_diff),
+      is_pick: r.is_pick === true || r.is_pick === 'true' || r.is_pick === 'True', rating: +r.rating, ev_slp: window.bt.num(r.ev_slp), opp_rank: window.bt.num(r.opp_rank), hit_l5: window.bt.num(r.hit_l5), hit_l10: window.bt.num(r.hit_l10), hit_season: window.bt.num(r.hit_season) })) : [];
+    const kinds = [...new Set(all.map((r) => r.prop.replace(/^[\d.]+ /, '')))].sort();
+    if (market.options.length !== kinds.length + 1) market.replaceChildren(new Option('All props', ''), ...kinds.map((k) => new Option(k, k)));
+    if (!tbl._sort) tbl._sort = { key: 'rating', dir: -1 };
+    table(tbl, shown, cells, (r) => r.id, (tr, r) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
+    const wk = all.length ? all[0].week : null, mine = wk == null ? [] : window.btMine.count(wk);
+    const st = window.btMine.status();
+    document.getElementById('mine-count').textContent = st === 'failed' ? 'Saving bets isn\'t available in this view.'
+      : st === 'loading' ? '' : `You've marked ${mine.length} bet${mine.length === 1 ? '' : 's'} this week (${d3.sum(mine, (m) => +m.stake || 0)}u).`;
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// analysis: ELWAY game bets sheet + week title
+(() => {
+  const { state, fmt, table, el } = window.bt;
+  const tbl = document.getElementById('games-table');
+  const title = document.getElementById('an-title');
+  let all = [];
+  const bet = (v, r) => { const s = el('span', null, (r.recommended ? '★ ' : '') + v); if (r.phi) s.appendChild(el('span', 'bt-tag', 'PHI')); return s; };
+  const kick = (v) => { const t = new Date(v); return isNaN(t) ? v : d3.timeFormat('%a %-I:%M%p')(t).replace('AM', 'a').replace('PM', 'p'); };
+  const gameCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('game', r, `${r.game}: ${r.bet} (${r.type_name})`).wrap, document.createTextNode(v)); return s; };
+  const cells = [['game', gameCell], ['kickoff', kick, 'bt-hide-narrow'], ['bet', bet], ['type_name', String, 'bt-hide-narrow'],
+    ['price', String, 'bt-r'], ['where', (v) => (v && v.startsWith('KX') ? 'Kalshi' : v || '—'), 'bt-hide-narrow'],
+    ['elway_p', fmt.p0, 'bt-r'], ['cost', fmt.p0, 'bt-r'], ['ev', (v) => (v == null ? '—' : d3.format('+.0%')(v)), 'bt-r'],
+    ['stake_scaled', fmt.u0, 'bt-r']];
+  const draw = () => {
+    const d = dash.data('games_week');
+    const p = dash.data('props_week');
+    const etTime = (v) => { const t = new Date(v); return isNaN(t) ? '—' : t.toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET'; };
+    document.querySelectorAll('#analysis [data-field="as_of"]').forEach((e) => {
+      const ds = dash.data(e.dataset.source); e.textContent = ds.status === 'ok' && ds.data.length ? etTime(ds.data[0].as_of) : '—';
+    });
+    const wk = title.querySelector('[data-source]');
+    wk.textContent = p.status === 'ok' && p.data.length ? p.data[0].week : '—';
+    if (state.tab !== 'analysis') return;
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    all = d.status === 'ok' ? d.data.map((r) => ({ ...r, elway_p: +r.elway_p, cost: +r.cost, ev: +r.ev, stake_scaled: +r.stake_scaled,
+      recommended: r.recommended === true || r.recommended === 'true' || r.recommended === 'True', phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
+    if (!tbl._sort) tbl._sort = { key: 'kickoff', dir: 1 };
+    table(tbl, () => all.filter((r) => state.gall === 'all' || r.recommended), cells, (r) => r.id,
+      (tr) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
+  };
+  window.btMine.onChange(() => draw());
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// pool tab
+(() => {
+  const { state, fmt, table, el, tip, message } = window.bt;
+  const CARDS = ['You', 'Model', 'Claude'];
+  const color = (c) => dash.colors[CARDS.indexOf(c)];
+  const cardsBox = document.getElementById('pool-cards');
+  const chart = document.getElementById('pool-chart');
+  const tt = tip(chart);
+  const weekSel = document.getElementById('pool-week');
+  const pickTbl = document.getElementById('pool-pick-table');
+  const teamTbl = document.getElementById('pool-team-table');
+  const teamSearch = document.getElementById('pool-team-search');
+  let picks = [], teams = [];
+  const rec = (w, l, p) => `${w}-${l}${p ? `-${p}` : ''}`;
+  const pill = (v) => el('span', `bt-pill ${v}`, { W: 'Won', L: 'Lost', P: 'Push', open: 'Open' }[v] || v);
+  const cardCell = (v) => { const s = el('span'); const sw = el('i', 'bt-swatch'); sw.style.background = color(v); s.append(sw, document.createTextNode(v)); return s; };
+  const signed = (v) => (v == null ? '—' : d3.format('+.1f')(v).replace('-', '−'));
+  const draw = () => {
+    if (state.tab !== 'pool') return;
+    const w = dash.data('pool_weekly');
+    const rows = w.status === 'ok' ? w.data.map((r) => ({ ...r, week: +r.week, wins: +r.wins, losses: +r.losses, pushes: +r.pushes,
+      cum_wins: +r.cum_wins, cum_losses: +r.cum_losses, cum_pushes: +r.cum_pushes, cum_win_pct: window.bt.num(r.cum_win_pct) })) : [];
+    cardsBox.classList.toggle('dash-skeleton', w.status === 'loading');
+    cardsBox.replaceChildren(...CARDS.map((c) => {
+      const mine = rows.filter((r) => r.card === c).sort((a, b) => a.week - b.week), last = mine[mine.length - 1];
+      const t = el('div', 'bt-tile'); const k = el('span', 'bt-k'); const sw = el('i', 'bt-swatch'); sw.style.background = color(c);
+      k.append(sw, document.createTextNode(c));
+      const big = el('span', 'bt-big', last ? rec(last.cum_wins, last.cum_losses, last.cum_pushes) : '—');
+      const line = el('span', 'bt-note', last ? `${fmt.pct(last.cum_win_pct)} · week ${last.week}: ${rec(last.wins, last.losses, last.pushes)}` : 'No graded weeks');
+      t.append(k, big, line); return t;
+    }));
+    message(chart, '');
+    const fd = dash.data('pool_field');
+    const field = fd.status === 'ok' ? d3.groups(fd.data.map((r) => ({ ...r, week: +r.week, entrant: +r.entrant, leader: r.leader === true || r.leader === 'true',
+      cum_wins: +r.cum_wins, cum_losses: +r.cum_losses, cum_pushes: +r.cum_pushes })), (r) => r.entrant)
+      .map(([n, rs]) => ({ n, leader: rs[0].leader, rows: rs, pts: [{ week: 0, v: 0 }, ...rs.sort((a, b) => a.week - b.week)
+        .map((r) => ({ week: r.week, v: r.cum_wins - 2.5 * r.week + 0.5 * r.cum_pushes }))] }))
+      .sort((a, b) => a.leader - b.leader) : [];
+    if (rows.length) {
+      const W = chart.clientWidth, H = 240, m = { t: 12, r: 44, b: 28, l: 8 };
+      const series = CARDS.map((c) => ({ c, pts: [{ week: 0, v: 0 }, ...rows.filter((r) => r.card === c).sort((a, b) => a.week - b.week)
+        .map((r) => ({ week: r.week, v: r.cum_wins - 2.5 * r.week + 0.5 * r.cum_pushes }))] })).filter((s) => s.pts.length > 1);
+      const all = [...series, ...field].flatMap((s) => s.pts.map((p) => p.v));
+      const x = d3.scaleLinear([0, d3.max(rows, (r) => r.week)], [m.l, W - m.r]);
+      const y = d3.scaleLinear(d3.extent([0, ...all]), [H - m.b, m.t]).nice(4);
+      const svg = d3.select(chart).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+      y.ticks(4).forEach((v) => {
+        svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', v === 0 ? 'var(--cds-chart-reference)' : 'var(--cds-chart-grid)');
+        svg.append('text').attr('x', W - m.r + 8).attr('y', y(v)).attr('dy', '0.35em').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(d3.format('+d')(v).replace('-', '−'));
+      });
+      const weeks = d3.range(1, d3.max(rows, (r) => r.week) + 1);
+      svg.append('g').selectAll('text').data(weeks).join('text').attr('x', (wk) => x(wk)).attr('y', H - 8).attr('text-anchor', 'middle')
+        .attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text((wk) => `Wk ${wk}`);
+      field.forEach((f) => svg.append('path').datum(f.pts).attr('d', d3.line().x((p) => x(p.week)).y((p) => y(p.v))).attr('fill', 'none')
+        .attr('stroke', f.leader ? 'var(--color-fg-muted)' : 'var(--cds-chart-muted)').attr('stroke-width', f.leader ? 2.5 : 1)
+        .attr('stroke-opacity', f.leader ? 1 : 0.55).attr('stroke-linejoin', 'round'));
+      const lead = field.find((f) => f.leader);
+      if (lead) { const lp = lead.pts[lead.pts.length - 1];
+        svg.append('text').attr('x', x(lp.week) - 4).attr('y', y(lp.v) - 7).attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)')
+          .style('font-size', 'var(--cds-font-size-caption)').text('Leader'); }
+      series.forEach((s) => svg.append('path').datum(s.pts).attr('d', d3.line().x((p) => x(p.week)).y((p) => y(p.v))).attr('fill', 'none')
+        .attr('stroke', color(s.c)).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round'));
+      svg.append('rect').attr('x', m.l).attr('y', 0).attr('width', W - m.r - m.l).attr('height', H - m.b).attr('fill', 'transparent')
+        .on('mousemove', (ev) => {
+          const wk = Math.max(1, Math.round(x.invert(d3.pointer(ev)[0])));
+          const lines = CARDS.map((c) => rows.find((r) => r.card === c && r.week === wk)).filter(Boolean)
+            .map((r) => `${r.card}: ${rec(r.wins, r.losses, r.pushes)} (season ${rec(r.cum_wins, r.cum_losses, r.cum_pushes)})`);
+          const fw = field.map((f) => f.rows.find((r) => r.week === wk)).filter(Boolean);
+          const ld = lead && lead.rows.find((r) => r.week === wk);
+          if (ld) lines.push(`Leader: ${rec(+ld.wins, +ld.losses, +ld.pushes)} (season ${rec(ld.cum_wins, ld.cum_losses, ld.cum_pushes)})`);
+          if (fw.length) lines.push(`Rest of the pool: median ${d3.median(fw, (r) => r.cum_wins)} wins through week ${wk}`);
+          if (lines.length) tt.show(ev, `Week ${wk}`, lines);
+        })
+        .on('mouseleave', tt.hide);
+    } else if (w.status === 'ok') message(chart, 'No graded weeks yet');
+    const p = dash.data('pool_picks');
+    picks = p.status === 'ok' ? p.data.map((r) => ({ ...r, week: +r.week, value: window.bt.num(r.value), margin: window.bt.num(r.margin), closing_line: window.bt.num(r.closing_line) })) : [];
+    const wks = [...new Set(picks.map((r) => r.week))].sort((a, b) => b - a);
+    if (weekSel.options.length !== wks.length) weekSel.replaceChildren(...wks.map((wk) => new Option(`Week ${wk}`, wk)));
+    if (!weekSel.value && wks.length) weekSel.value = wks[0];
+    pickTbl.classList.toggle('dash-skeleton', p.status === 'loading');
+    table(pickTbl, () => picks.filter((r) => r.week === +weekSel.value).sort((a, b) => CARDS.indexOf(a.card) - CARDS.indexOf(b.card)),
+      [['card', cardCell], ['pick', String], ['game', String, 'bt-hide-narrow'], ['value', signed, 'bt-r'], ['result', pill],
+       ['margin', (v) => (v == null ? '—' : d3.format('+d')(v).replace('-', '−')), 'bt-r'], ['closing_line', signed, 'bt-r bt-hide-narrow']], (r) => r.id);
+    const t = dash.data('pool_teams');
+    teams = t.status === 'ok' ? t.data.map((r) => ({ ...r, games: +r.games, ats_wins: +r.ats_wins, ats_losses: +r.ats_losses, ats_pct: window.bt.num(r.ats_pct),
+      avg_cover: window.bt.num(r.avg_cover), close_wins: +r.close_wins, close_losses: +r.close_losses, su_wins: +r.su_wins, su_losses: +r.su_losses,
+      field_picks: +r.field_picks || 0, field_wins: +r.field_wins || 0, field_losses: +r.field_losses || 0, field_net: +r.field_net || 0 })) : [];
+    teamPlots(teams, t.status);
+    teamTbl.classList.toggle('dash-skeleton', t.status === 'loading');
+    if (!teamTbl._sort) teamTbl._sort = { key: 'ats_pct', dir: -1 };
+    const q = () => teamSearch.value.trim().toUpperCase();
+    table(teamTbl, () => teams.filter((r) => !q() || r.team.includes(q())),
+      [['team', String], ['games', String, 'bt-r'], ['ats_wins', String, 'bt-r'], ['ats_losses', String, 'bt-r'], ['ats_pct', fmt.pct, 'bt-r'],
+       ['avg_cover', signed, 'bt-r'], ['home_ats', String, 'bt-r bt-hide-narrow'], ['away_ats', String, 'bt-r bt-hide-narrow'],
+       ['close_wins', String, 'bt-r bt-hide-narrow'], ['close_losses', String, 'bt-r bt-hide-narrow'], ['su_wins', String, 'bt-r'], ['su_losses', String, 'bt-r'],
+       ['field_picks', String, 'bt-r'], ['field_wins', String, 'bt-r'], ['field_losses', String, 'bt-r'],
+       ['field_net', (v) => d3.format('+d')(v).replace('-', '−'), 'bt-r']],
+      (r) => r.team);
+  };
+  const strip = document.getElementById('pool-ats-strip'), scatter = document.getElementById('pool-team-scatter');
+  const stt = tip(scatter);
+  const chip = (g, cx, cy, team) => {
+    const c = g.append('g').attr('transform', `translate(${cx},${cy})`);
+    c.append('rect').attr('x', -17).attr('y', -9).attr('width', 34).attr('height', 18).attr('rx', 9)
+      .attr('fill', 'var(--color-bg)').attr('stroke', 'var(--cds-chart-axis)');
+    c.append('text').attr('text-anchor', 'middle').attr('dy', '0.35em').attr('fill', 'var(--color-fg)')
+      .style('font-size', 'var(--cds-font-size-caption)').style('font-weight', 600).text(team);
+    return c;
+  };
+  function teamPlots(ts, status) {
+    [strip, scatter].forEach((b) => { message(b, ''); b.classList.toggle('dash-skeleton', status === 'loading'); });
+    if (!ts.length) return;
+    // ATS record rows, best first
+    const groups = d3.groups(ts, (r) => `${r.ats_wins}-${r.ats_losses}${r.ats_pushes > 0 ? `-${r.ats_pushes}` : ''}`)
+      .sort((a, b) => b[1][0].ats_wins - a[1][0].ats_wins || a[1][0].ats_losses - b[1][0].ats_losses);
+    const W1 = strip.clientWidth, perRow = Math.max(4, Math.floor((W1 - 48) / 40)), rowH = 24;
+    const lines = groups.flatMap(([k, rs]) => d3.range(Math.ceil(rs.length / perRow)).map((i) => ({ k: i ? '' : k, rs: rs.sort((a, b) => d3.ascending(a.team, b.team)).slice(i * perRow, (i + 1) * perRow) })));
+    const H1 = lines.length * rowH + 8;
+    const s1 = d3.select(strip).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W1} ${H1}`);
+    lines.forEach((ln, i) => {
+      const cy = 14 + i * rowH;
+      s1.append('text').attr('x', 0).attr('y', cy).attr('dy', '0.35em').attr('fill', 'var(--color-fg-muted)')
+        .style('font-size', 'var(--cds-font-size-caption)').style('font-variant-numeric', 'tabular-nums').text(ln.k);
+      ln.rs.forEach((r, j) => chip(s1, 48 + 20 + j * 40, cy, r.team));
+    });
+    // times picked vs net picks won
+    const W = scatter.clientWidth, H = Math.max(260, H1), m = { t: 12, r: 24, b: 34, l: 40 };
+    const xm = d3.max(ts, (r) => r.field_picks) || 1, ym = Math.max(4, d3.max(ts, (r) => Math.abs(r.field_net)));
+    const x = d3.scaleLinear([0, xm * 1.08], [m.l, W - m.r]), y = d3.scaleLinear([-ym * 1.1, ym * 1.1], [H - m.b, m.t]);
+    const s2 = d3.select(scatter).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const ax = (g) => g.attr('font-size', null).attr('font-family', null).call((a) => a.select('.domain').remove())
+      .call((a) => a.selectAll('text').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)'))
+      .call((a) => a.selectAll('line').attr('stroke', 'var(--cds-chart-grid)'));
+    s2.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(6).tickSize(-(H - m.b - m.t))).call(ax);
+    s2.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(6).tickSize(-(W - m.l - m.r)).tickFormat((v) => d3.format('+d')(v).replace('-', '−'))).call(ax);
+    const dash_ = (x2, y2) => s2.append('line').attr('x1', x(0)).attr('y1', y(0)).attr('x2', x(x2)).attr('y2', y(y2))
+      .attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 4');
+    dash_(xm * 1.08, 0); dash_(Math.min(xm * 1.08, ym * 1.1), Math.min(xm * 1.08, ym * 1.1)); dash_(Math.min(xm * 1.08, ym * 1.1), -Math.min(xm * 1.08, ym * 1.1));
+    s2.append('text').attr('x', (m.l + W - m.r) / 2).attr('y', H - 4).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)')
+      .style('font-size', 'var(--cds-font-size-caption)').text('Times picked');
+    s2.append('text').attr('transform', `translate(10,${(m.t + H - m.b) / 2}) rotate(-90)`).attr('text-anchor', 'middle').attr('fill', 'var(--color-fg-muted)')
+      .style('font-size', 'var(--cds-font-size-caption)').text('Picks won − lost');
+    ts.slice().sort((a, b) => a.field_picks - b.field_picks).forEach((r) => chip(s2, x(r.field_picks), y(r.field_net), r.team)
+      .style('cursor', 'default')
+      .on('mousemove', (ev) => stt.show(ev, r.team, [`Picked ${r.field_picks} times: ${r.field_wins}-${r.field_losses} (net ${d3.format('+d')(r.field_net).replace('-', '−')})`,
+        `ATS at the pool's line: ${r.ats_wins}-${r.ats_losses}`]))
+      .on('mouseleave', stt.hide));
+  }
+  weekSel.addEventListener('change', () => pickTbl._draw && pickTbl._draw());
+  teamSearch.addEventListener('input', () => teamTbl._draw && teamTbl._draw());
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// pool tab: my standing in the contest
+(() => {
+  const { state, el, message } = window.bt;
+  const title = document.getElementById('pool-me-title'), note = document.getElementById('pool-me-note');
+  const tiles = document.getElementById('pool-me-tiles'), box = document.getElementById('pool-field');
+  const ord = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const draw = () => {
+    if (state.tab !== 'pool') return;
+    const d = dash.data('pool_standings');
+    const rows = d.status === 'ok' ? d.data : [];
+    const me = rows.find((r) => r.id === 'me');
+    const field = rows.filter((r) => r.id !== 'me').map((r) => +r.points);
+    tiles.replaceChildren(); message(box, '');
+    if (!me) { note.textContent = d.status === 'ok' ? 'No standings yet: send a screenshot of the pool sheet.' : ''; return; }
+    title.textContent = `My standing: ${me.contest}`;
+    note.textContent = `After week ${me.as_of_week}. Payouts: ${me.payouts}.`;
+    const tile = (k, v, sub) => { const t = el('div', 'bt-tile'); t.append(el('span', 'bt-k', k), el('span', 'bt-big', v)); if (sub) t.append(el('span', 'bt-note', sub)); return t; };
+    const behind = +me.leader_points - +me.my_points;
+    tiles.append(
+      tile('Place', `${me.my_rank_tied ? 'T-' : ''}${ord(+me.my_rank)}`, `of ${me.entrants}`),
+      tile('Points', String(me.my_points), behind > 0 ? `${behind} behind the leader (${me.leader_points})` : 'leading'),
+      tile('Quarters', `${me.my_q1} · ${me.my_q2}`, 'Q1 · Q2'),
+      tile('Winning now', `$${(+me.my_pot).toLocaleString()}`, `2nd is at ${me.second_points}, 3rd at ${me.third_points}`));
+    // dot strip of the field, mine highlighted
+    const W = box.clientWidth, H = 96, m = { l: 16, r: 16, b: 24 };
+    const all = [...field, +me.my_points];
+    const x = d3.scaleLinear([d3.min(all) - 1, d3.max(all) + 1], [m.l, W - m.r]);
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const stack = {};
+    const dots = field.map((p) => ({ p, me: false })).sort((a, b) => a.p - b.p);
+    // the field list includes your own score once: mark one dot at your points as you
+    const mine = dots.find((o) => o.p === +me.my_points); if (mine) mine.me = true;
+    dots.forEach((o) => { o.k = (stack[o.p] = (stack[o.p] || 0) + 1) - 1; });
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.min(10, d3.max(all) - d3.min(all) + 2)).tickFormat(d3.format('d')).tickSize(0).tickPadding(8))
+      .call((g) => g.attr('font-size', null).attr('font-family', null).select('.domain').attr('stroke', 'var(--cds-chart-axis)'))
+      .call((g) => g.selectAll('text').attr('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)'));
+    svg.append('g').selectAll('circle').data(dots).join('circle')
+      .attr('cx', (o) => x(o.p)).attr('cy', (o) => H - m.b - 8 - o.k * 11).attr('r', 4.5)
+      .attr('fill', (o) => (o.me ? dash.colors[0] : 'var(--cds-chart-muted)'))
+      .attr('stroke', (o) => (o.me ? 'var(--color-fg)' : 'none')).attr('stroke-width', 1.5);
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>

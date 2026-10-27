@@ -9,7 +9,7 @@ reminds you (see the bottom of this file).
 
 | when | folder | step |
 |---|---|---|
-| any time | `nfl_model` | `python3 log_week.py grade <last wk>` then `python3 pool_tracker.py report` |
+| any time | `nfl_model` | `python3 log_week.py grade <last wk>` then `python3 pool_tracker.py report`; send Claude a screenshot of the pool board for the field's picks, then `python3 pool_field.py` |
 | any time | `nfl_bets` | `python3 sync_data.py`, then `python3 bets.py grade <last wk>` then `python3 bets.py report` |
 | any time | `nfl_bets` | `python3 props.py grade <last wk>` then `python3 props.py report` |
 | after grading | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it to the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS) |

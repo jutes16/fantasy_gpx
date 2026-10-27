@@ -180,7 +180,8 @@ def my_bets():
                              week=int(k["week"]), game=k["game"], bet=k["bet"],
                              price="" if k.get("price_cents") is None else f"{k['price_cents']}¢", ev=None,
                              stake=k["stake"], stake_scaled=k["stake"], result=k["result"], pnl=k["pnl"],
-                             scaled_pnl=k["pnl"], clv_cents=None, phi="PHI" in k["game"].split(" @ ")))
+                             scaled_pnl=k["pnl"], clv_cents=None, phi="PHI" in k["game"].split(" @ "),
+                             stake_dollars=k.get("cost_dollars"), pnl_dollars=k.get("pnl_dollars")))
     return rows
 
 
@@ -316,6 +317,100 @@ def games_week(week):
     return rows
 
 
+# ------------------------------------------------------------------ the pool
+NFL_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nfl_model")
+CARDS = (("You", "your submitted picks"), ("Model", "pool.py's card"), ("Claude", "Claude's picks"))
+
+
+def pool_data():
+    """The pool's three cards (pool_tracker.py's grading) and each team against the spread."""
+    import contextlib
+    import sys
+    sys.path.insert(0, NFL_MODEL)
+    import pool_tracker as pt
+
+    @contextlib.contextmanager
+    def in_model():
+        here = os.getcwd()
+        os.chdir(NFL_MODEL)
+        try:
+            yield
+        finally:
+            os.chdir(here)
+
+    with in_model():
+        mine, model = pt.from_submissions()
+        sub = pd.read_csv(pt.SUBMISSIONS)
+        claude = pt.claude_picks(sub)
+        import pool_field as pf
+        fp = pf.graded() if os.path.exists(pf.FIELD) else pd.DataFrame(columns=["week", "player", "team", "result"])
+    picks, weekly = [], []
+    for (card, _), d in zip(CARDS, (mine, model, claude)):
+        if d is None or d.empty:
+            continue
+        for x in d.itertuples():
+            res = x.result if isinstance(x.result, str) and x.result in ("W", "L", "P") else "open"
+            picks.append(dict(id=f"{card}|{int(x.week)}|{int(x.slot)}", card=card, week=int(x.week), game=x.game,
+                              pick=x.pick, value=_num(x.pts_value, 1), result=res, margin=_num(x.margin, 0),
+                              closing_line=_num(x.closing_line, 1)))
+        cw = cl = cp = 0
+        for wk, g in d.groupby("week"):
+            w, l, pu = ((g.result == r).sum() for r in ("W", "L", "P"))
+            graded = int(w + l + pu)
+            if not graded:
+                continue
+            cw, cl, cp = cw + int(w), cl + int(l), cp + int(pu)
+            weekly.append(dict(id=f"{card}|{int(wk)}", card=card, week=int(wk), wins=int(w), losses=int(l), pushes=int(pu),
+                               cum_wins=cw, cum_losses=cl, cum_pushes=cp,
+                               cum_win_pct=round(cw / (cw + cl), 4) if cw + cl else None))
+    # every team against the spread, at the pool line and at the closing line, from the board's results
+    b = sub[sub.margin.notna()]
+    rows = []
+    for x in b.itertuples():
+        for team, home in ((x.home, True), (x.away, False)):
+            s_ = 1 if home else -1
+            pool_cover = s_ * (x.margin + x.pool_line)        # lines home-perspective; margin = home margin
+            close_cover = None if pd.isna(x.closing_line) else s_ * (x.margin + x.closing_line)
+            rows.append(dict(team=team, home=home, pool_cover=pool_cover, close_cover=close_cover,
+                             won=s_ * x.margin > 0, tie=x.margin == 0))
+    t = pd.DataFrame(rows)
+    fp = fp[fp.result.isin(["W", "L", "P"])]
+    teams = []
+    for team, g in t.groupby("team"):
+        f = fp[fp.team == team]
+        rec = lambda c: (int((c > 0).sum()), int((c < 0).sum()), int((c == 0).sum()))
+        pw, pl, pp = rec(g.pool_cover)
+        cc = g.close_cover.dropna()
+        cw_, cl_, cp_ = rec(cc)
+        teams.append(dict(team=team, games=len(g), su_wins=int(g.won.sum()), su_losses=int((~g.won & ~g.tie).sum()),
+                          ats_wins=pw, ats_losses=pl, ats_pushes=pp,
+                          ats_pct=round(pw / (pw + pl), 4) if pw + pl else None,
+                          avg_cover=round(float(g.pool_cover.mean()), 1),
+                          close_wins=cw_, close_losses=cl_, close_pushes=cp_,
+                          home_ats=f"{int((g[g.home].pool_cover > 0).sum())}-{int((g[g.home].pool_cover < 0).sum())}",
+                          away_ats=f"{int((g[~g.home].pool_cover > 0).sum())}-{int((g[~g.home].pool_cover < 0).sum())}",
+                          field_picks=len(f), field_wins=int((f.result == "W").sum()), field_losses=int((f.result == "L").sum()),
+                          field_net=int((f.result == "W").sum() - (f.result == "L").sum())))
+    return picks, weekly, teams, field_weekly(fp, pf.ME)
+
+
+def field_weekly(fp, me):
+    """Every other entrant's running record by week, unnamed (entrant 1 = the leader), for the grey lines."""
+    if fp.empty:
+        return []
+    wk = fp.assign(w=fp.result == "W", l=fp.result == "L", p=fp.result == "P") \
+           .groupby(["player", "week"])[["w", "l", "p"]].sum().reset_index().sort_values("week")
+    wk[["cw", "cl", "cp"]] = wk.groupby("player")[["w", "l", "p"]].cumsum()
+    last = wk[wk.week == wk.week.max()].assign(pts=lambda d: d.cw + 0.5 * d.cp).sort_values("pts", ascending=False)
+    order = {name: i + 1 for i, name in enumerate(last.player)}
+    out = []
+    for x in wk[wk.player != me].itertuples():
+        n = order.get(x.player, 99)
+        out.append(dict(id=f"{n}|{int(x.week)}", entrant=n, leader=n == 1, week=int(x.week), wins=int(x.w), losses=int(x.l),
+                        pushes=int(x.p), cum_wins=int(x.cw), cum_losses=int(x.cl), cum_pushes=int(x.cp)))
+    return out
+
+
 def main():
     e, p, mine = elway_bets(), prop_bets(), my_bets()
     allb = e + p + mine
@@ -324,6 +419,9 @@ def main():
     week = max(int(pd.read_csv(props.LOG).week.max()), int(pd.read_csv(bets.LOG).week.max()))
     out = {"bets": sorted(allb, key=lambda b: (-b["week"], b["source"], b["game"])), "timeline": timeline,
            "summary": summary, "props_week": props_week(week), "games_week": games_week(week)}
+    out["pool_picks"], out["pool_weekly"], out["pool_teams"], out["pool_field"] = pool_data()
+    stand = os.path.join(DATA, "pool_standings.json")      # your place in the pool, from its sheet (git-ignored)
+    out["pool_standings"] = json.load(open(stand)) if os.path.exists(stand) else []
     os.makedirs(OUT, exist_ok=True)
     for k, rows in out.items():
         json.dump(rows, open(os.path.join(OUT, f"{k}.json"), "w"), default=str)
