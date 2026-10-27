@@ -34,6 +34,8 @@ def copy_tree(src, dst):
     new = merged = 0
     for root, _, files in os.walk(src):
         for f in files:
+            if f.startswith("."):                       # .gitkeep and the like
+                continue
             a = os.path.join(root, f)
             b = os.path.join(dst, os.path.relpath(a, src))
             os.makedirs(os.path.dirname(b), exist_ok=True)

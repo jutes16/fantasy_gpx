@@ -296,14 +296,38 @@ Claude to upload the files to the dashboard.
 ## Cloud snapshots
 
 `snapshot.py` runs in GitHub Actions in the private repo
-[fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data) every 30 minutes on
-game days, so the pre-kickoff data doesn't depend on a laptop being awake. For
-games kicking off within 2.5 hours it buys their props once (`fantasy_props.fetch_props`
-with `window`), saves Sleeper's projections for those players (the snapshot props
-are graded against) and takes a Kalshi snapshot. `python3 sync_data.py` copies
-everything into this checkout (cloning the data repo next to this one the first
-time); then `props.py sheet <wk> --cached`, `bets.py grade` and `hq.py` work as
-before. The data repo is private because the props are per-book Odds API prices.
+[fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data), so the
+pre-kickoff data doesn't depend on a laptop being awake:
+
+- **Thursday 4 pm ET** (`--full`): player props for every game this week and
+  Sleeper's projections for those players (~84 credits). The week's picks and the
+  dashboard's Analysis tab can be built from Thursday evening.
+- **Sunday 10 am ET** (`--recheck`): fresh prices on just the week's picks
+  (~10-20 credits), shown as "Sun 10 am" on the Analysis tab.
+- **Every 30 minutes on game days**: a Kalshi snapshot when a game kicks off
+  within 2.5 hours (the last one before kickoff is the close), plus props for
+  any game Thursday's pull missed.
+
+About 100 credits a week of the free tier's 500 a month. `python3 sync_data.py`
+copies everything into this checkout (cloning the data repo next to this one
+the first time); then `props.py sheet <wk> --cached`, `bets.py grade` and
+`hq.py` work as before. The data repo is private because the props are
+per-book Odds API prices.
+
+## My bets
+
+The Bet Tracker's Dashboard tab switches between **My bets** and **All
+recommended**. My bets come from two places:
+
+- **Ticks:** tick **Bet** on any row of the Analysis tab, with your stake in
+  units and, if different, your price. Claude exports the ticks
+  (`python3 hq.py --ticks <folder>` imports them to `data/my_bets.json`) and
+  `hq.py` grades them from the logs at your stake and price.
+- **Your Kalshi account:** `python3 kalshi_mine.py` reads your NFL fills and
+  settlements (read-only, signed with your API key; setup at the top of the
+  file) into `data/my_kalshi.json`. Stakes are what you paid in units of
+  `MY_UNIT_DOLLARS`; results are Kalshi's own settlements. When it exists, it
+  replaces any Kalshi ticks.
 
 ## Files
 
@@ -315,6 +339,7 @@ before. The data repo is private because the props are per-book Odds API prices.
 | `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report |
 | `hq.py` | the Bet Tracker dashboard's data: both ledgers, results by filter, the upcoming week's sheets |
 | `snapshot.py` | the cloud's pre-kickoff snapshots: props, Sleeper projections, Kalshi (run by GitHub Actions in fantasy_gpx-data) |
+| `kalshi_mine.py` | your real Kalshi NFL bets (read-only API) for My bets |
 | `sync_data.py` | copies the cloud snapshots from the private data repo into this checkout |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |

@@ -20,7 +20,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install pandas numpy scipy openpyxl requests pytest
+        run: pip install pandas numpy scipy openpyxl requests cryptography pytest
 
       - name: Compile every script (catches syntax errors)
         run: python -m compileall -q nfl_model nfl_bets nfl_fantasy

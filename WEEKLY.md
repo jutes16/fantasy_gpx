@@ -29,6 +29,8 @@ reminds you (see the bottom of this file).
 
 | when | folder | step |
 |---|---|---|
+| 4 pm ☁ | cloud | the week's player props and Sleeper projections (`snapshot.py --full`) |
+| evening | `nfl_bets` | `python3 sync_data.py`, `python3 props.py sheet <wk> --cached` (marks the PICKs), `python3 hq.py`, then ask Claude to upload: the Analysis tab shows the week |
 | 7:52 pm ⏰ | `nfl_bets` | `python3 kalshi.py <wk>` (closing snapshot for the Thursday game) |
 
 ## Sunday: lock at 1 pm
@@ -38,7 +40,8 @@ reminds you (see the bottom of this file).
 | 10:06 am ⏰ | `nfl_model` | `python3 update_mkt.py <wk>`, then `python3 fetch_splits.py 2026 <wk> --to-workbook` (Apify), then `python3 pool.py <wk>` |
 | before 1:00 pm | `nfl_model` | Submit, then `python3 log_week.py submit <wk> --picks A,B,C,D,E` |
 | before 1:00 pm | `nfl_model` | Claude's picks, made in a **separate conversation**, then `python3 pool_tracker.py claude <wk> A,B,C,D,E` |
-| from ~2.5 h before each kickoff ☁ | cloud | props bought, Sleeper projections saved, Kalshi snapshots (see Cloud snapshots below) |
+| 10 am ☁ | cloud | fresh prices on the week's picks (`snapshot.py --recheck`) |
+| from ~2.5 h before each kickoff ☁ | cloud | Kalshi snapshots; props for any game Thursday missed |
 | 11:00 am ⏰ | `nfl_bets` | `python3 sync_data.py`, then `python3 props.py sheet <wk> --cached` (marks the week's PICKs) |
 | 11:00 am ⏰ | `nfl_fantasy` | `python3 fantasy_props.py <wk> --cached`, then `python3 sleeper_lineup.py jg337` |
 | after that | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it (the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS)'s Analysis tab: this week's props and game bets) |
@@ -70,9 +73,9 @@ those stay with you.
 
 The steps that must happen before kickoff and need no one there run in GitHub
 Actions, in the private repo [fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data),
-every 30 minutes on game days: for each game kicking off within 2.5 hours,
-`nfl_bets/snapshot.py` buys its player props once, saves Sleeper's projections for
-those players and takes a Kalshi snapshot (the last before kickoff is the close).
+Thursday 4 pm ET (every game's player props and Sleeper's projections), Sunday
+10 am ET (fresh prices on the week's picks) and every 30 minutes on game days
+(Kalshi snapshots; props for any game Thursday missed).
 They're saved to the private repo; before grading or the props sheet, run
 `python3 sync_data.py` from `nfl_bets/` to copy them in, then
 `python3 props.py sheet <wk> --cached`.
