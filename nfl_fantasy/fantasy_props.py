@@ -83,8 +83,10 @@ def fetch_props(week, season=SEASON, homes=None, cached=False, window=None):
                                         dict(regions="us", markets=",".join(MARKETS),
                                              oddsFormat="american"))
         data["_fetched_at"] = now.isoformat(timespec="seconds")
-        json.dump(data, open(path, "w"))
         used += int(last or 0)
+        if not data.get("bookmakers"):                 # nothing posted yet: let a later run buy it
+            continue
+        json.dump(data, open(path, "w"))
         out.append(data)
     print(f"props: {len(out)} games ({used} credits used now, {left} left this month)")
     return out
