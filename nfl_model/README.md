@@ -98,6 +98,7 @@ the same pick log, at the same pool lines, margins and closing lines:
 | any time that week | `python3 pool_tracker.py claude 4 A,B,C,D,E` |
 | after the games | `python3 log_week.py grade 4` |
 | any time | `python3 pool_tracker.py report` |
+| after grading | `python3 pool_field.py`: every entrant's picks, graded (add a week from the sheet with `pool_field.py add <wk> "<name>" A,B,C,D,E`, or ask Claude to read a screenshot of the board; the picks file is git-ignored) |
 
 **Editing the workbook in Excel:** click **Done**, never **Move to Trash**,
 if macOS says it "could not verify" the file. Excel's sandbox tags saved

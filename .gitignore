@@ -40,3 +40,6 @@ nfl_fantasy/data/usage/
 
 # Fitted prop shapes (derived from public nflverse logs; needed by the tests)
 !nfl_fantasy/data/prop_shapes.json
+
+# The pool field: other entrants' names and picks (private; stays on this Mac)
+nfl_model/data/pool_field_picks.csv

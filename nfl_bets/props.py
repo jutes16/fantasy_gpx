@@ -266,12 +266,18 @@ COLS = ["week", "logged_at", "player", "key", "pos", "team", "game", "kickoff", 
         "hit_l5", "hit_l10", "hit_season", "opp", "opp_factor", "opp_rank", "actual", "result", "units"]
 
 
-def mark_picks(d):
-    """The week's PICK flags (see PICK_MAX), ranked across every game of the week."""
+PICK_RULE_FROM = 7      # first week the PICK rule hadn't seen (it was chosen on weeks 4-5)
+
+
+def mark_picks(d, form=True):
+    """The week's PICK flags (see PICK_MAX), ranked across every game of the week.
+    form=False drops the recent-form condition (for the report's comparison)."""
     over = d.side.isin(["over", "yes"])
     fav = pd.Series(np.where(over, d.opp_factor, 1 / d.opp_factor), index=d.index)
     proj = d.proj.astype(str).str.lower() == "true"
-    ok = proj & (d.hit_rate >= 0.5) & (fav >= 1) & (d.market != "player_anytime_td")
+    ok = proj & (fav >= 1) & (d.market != "player_anytime_td")
+    if form:
+        ok &= d.hit_rate >= 0.5
     pick = pd.Series(False, index=d.index)
     for _, idx in d[ok].groupby("week").groups.items():
         pick[d.loc[idx].sort_values("edge", ascending=False).head(PICK_MAX).index] = True
@@ -429,6 +435,18 @@ def report(log=None, title="ALL WEEKS"):
     if "pick" in log:
         pk = log.pick.astype(str).str.lower() == "true"
         print(_row(f"PICK (the {PICK_MAX} a week you'd bet)", log[pk]))
+        if "hit_rate" in log and log.hit_rate.notna().any():
+            nf = mark_picks(log, form=False)
+            print(f"\n  Does the recent-form rule earn its place? The current PICK rule vs the same rule")
+            print(f"  without it (Sleeper edge + matchup, no anytime TD, top {PICK_MAX} a week):")
+            for lab, wk in ((f"weeks before {PICK_RULE_FROM} (rule chosen here)", log.week < PICK_RULE_FROM),
+                            (f"week {PICK_RULE_FROM} on (unseen)", log.week >= PICK_RULE_FROM)):
+                if not wk.any():
+                    continue
+                print(f"    {lab}:")
+                print(_row("      with recent form (current)", log[pk & wk]))
+                print(_row("      without recent form", log[nf & wk]))
+                print(_row("        only in without (form dropped them)", log[nf & ~pk & wk]))
     # each prop once (over / yes side): the under's edge is the over's, negated
     print("\n  Sleeper edge on the over / yes (P slp - P mkt), each prop once:")
     e = log[log.edge.notna() & log.side.isin(["over", "yes"])]
