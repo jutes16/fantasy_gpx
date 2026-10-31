@@ -10,6 +10,8 @@ Weekly:
                                           (pre-kickoff only; refused if ELWAY
                                           hasn't changed since the last batch)
     python3 bets.py sheet 4 --no-log      ...print only, log nothing
+    python3 bets.py sheet 4 --export f    ...save the sheet to f instead of logging (the cloud;
+                                          sync_data.py logs it via import_sheets)
     python3 kalshi.py 4                   another snapshot right before kickoff
                                           (becomes the "close" for CLV)
     python3 bets.py grade 4               after the games
@@ -263,7 +265,7 @@ def describe(b):
     return ""
 
 
-def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False):
+def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False, export=None):
     book_df = None
     if books:                       # best price across sportsbooks (odds_api.py)
         import odds_api
@@ -309,9 +311,15 @@ def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False):
         print(f"   {b.game:<12}{b.instrument:<14}{describe(b):<34} EV {b.ev:+.3f}")
     print("   Caveat: ELWAY vs the market is unproven; stakes are 1 unit, flat.")
 
-    if log:
-        flagged = best[best.ev >= min_ev].copy()
-        flagged["recommended"] = flagged.index.isin(rec.index)
+    flagged = best[best.ev >= min_ev].copy()
+    flagged["recommended"] = flagged.index.isin(rec.index)
+    if export:                      # the cloud: save the sheet for the laptop's log (import_sheets)
+        flagged = flagged[pd.to_datetime(flagged.kickoff) > now].assign(
+            elway_fp=elway_fingerprint(week), logged_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        os.makedirs(os.path.dirname(export), exist_ok=True)
+        flagged.to_csv(export, index=False)
+        print(f"\nexported {len(flagged)} bets for week {week} -> {export}")
+    elif log:
         write_log(flagged, week, now, force=force)
 
 
@@ -327,7 +335,7 @@ def elway_fingerprint(week):
     return h.hexdigest()[:10]
 
 
-def write_log(flagged, week, now, force=False):
+def write_log(flagged, week, now, force=False, fp=None):
     """Append this run as a new batch; earlier batches are never touched.
 
     Only games that haven't kicked off are logged. A new batch is refused when
@@ -335,7 +343,7 @@ def write_log(flagged, week, now, force=False):
     new prices alone would just move the test's entry point) -- pass --force
     to log anyway."""
     flagged = flagged[pd.to_datetime(flagged.kickoff) > now].copy()
-    fp = elway_fingerprint(week)
+    fp = fp or elway_fingerprint(week)
     old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame()
     wk = old[(old.season == SEASON) & (old.week == week)] if len(old) else old
     batch = 1
@@ -361,6 +369,24 @@ def write_log(flagged, week, now, force=False):
     out.to_csv(LOG, index=False)
     print(f"\nlogged batch {batch}: {len(flagged)} bets for week {week} -> "
           f"{os.path.relpath(LOG)}  ({flagged.recommended.sum()} recommended)")
+
+
+def import_sheets(folder):
+    """Log the sheets the cloud saved when ELWAY updated (elway_pull.py --cloud), oldest
+    first, each at the time and prices it was taken. Only sheets newer than the week's last
+    batch count, and one whose ELWAY inputs match that batch is skipped (write_log's rule)."""
+    import glob
+    sheets = [pd.read_csv(f) for f in glob.glob(os.path.join(folder, f"bets_{SEASON}_wk*.csv"))]
+    for s in sorted([s for s in sheets if len(s)], key=lambda s: s.logged_at.iloc[0]):
+        week, at = int(s.week.iloc[0]), s.logged_at.iloc[0]
+        old = pd.read_csv(LOG) if os.path.exists(LOG) else pd.DataFrame(columns=["season", "week", "logged_at"])
+        wk = old[(old.season == SEASON) & (old.week == week)]
+        if len(wk) and pd.Timestamp(at) <= pd.to_datetime(wk.logged_at).max():
+            continue                                  # logged, or older than what's logged
+        s["recommended"] = s.recommended.astype(str).str.lower() == "true"
+        print(f"cloud sheet of {at}:", end="")
+        write_log(s.drop(columns=["elway_fp", "logged_at"]), week,
+                  pd.Timestamp(at).to_pydatetime(), fp=s.elway_fp.iloc[0])
 
 
 def views(log):
@@ -551,7 +577,7 @@ if __name__ == "__main__":
     opt = lambda k, d: float(a[a.index(k) + 1]) if k in a else d
     if cmd == "sheet":
         sheet(int(a[1]), min_ev=opt("--min-ev", 0.05), fetch="--no-fetch" not in a, log="--no-log" not in a,
-              force="--force" in a, books="--books" in a)
+              force="--force" in a, books="--books" in a, export=a[a.index("--export") + 1] if "--export" in a else None)
     elif cmd == "grade":
         grade(int(a[1]))
     elif cmd == "report":

@@ -87,6 +87,27 @@ since week 4 (the most of any team) and those bets went 0-3.
 
 ## Player props: over or under?
 
+## Season bets (season.py): ELWAY's season vs Kalshi's season markets
+
+A paper test of ELWAY's season-long numbers: its simulated win distribution and
+playoff odds (Silver Bulletin's public embed feed) against Kalshi's "wins at
+least N" (KXNFLWINS) and "makes the playoffs" (KXNFLPLAYOFF) markets.
+
+```
+python3 season.py sheet 8      # price, print, log a batch (Wednesday, after ELWAY updates)
+python3 season.py grade        # January: wins once the regular season ends, playoffs once the field is set
+python3 season.py report
+```
+
+Both sides of every market are priced at what you could execute (YES at the
+ask, NO at 1 - bid, plus Kalshi's fee). One bet per team, its best side priced
+20-80c, because every rung of a team's ladder is the same opinion. Money is tied
+up until January, so EV is discounted at 3.5% a year (`--rate`):
+`ev_adj = (1 + ev) / (1 + rate) ** years - 1`; recommended = `ev_adj` >= 10%
+(`--min-ev`). The log (`data/season_log.csv`) keeps every team's best side with
+ELWAY's playoff odds this week with a loss / now / with a win. The Bet Tracker's
+Analysis tab shows the latest batch under "Season bets (ELWAY)".
+
 A second paper test, separate from ELWAY: do Sleeper's projections, or simply
 shopping six books, beat the player-prop market?
 
@@ -340,6 +361,8 @@ recommended**. My bets come from two places:
 | `hq.py` | the Bet Tracker dashboard's data: both ledgers, results by filter, the upcoming week's sheets |
 | `snapshot.py` | the cloud's pre-kickoff snapshots: props, Sleeper projections, Kalshi (run by GitHub Actions in fantasy_gpx-data) |
 | `kalshi_mine.py` | your real Kalshi NFL bets (read-only API) for My bets |
+| `elway_pull.py` | ELWAY's week (table + margin distributions) from its public feed; `--cloud` also prices the bet sheet (elway.yml in the data repo) |
+| `kalshi_mcp.py` | local MCP helper behind the dashboard's "Refresh my Kalshi bets" button (runs kalshi_mine.py + hq.py on your Mac) |
 | `sync_data.py` | copies the cloud snapshots from the private data repo into this checkout |
 | `common.py` | team codes, nflverse schedule, ELWAY parser, margin models (ELWAY distribution, historical fallback, normal), fees |
 | `data/bet_log.csv` | every logged paper bet and its result (`batch`, `elway_fp` = which ELWAY forecast it came from) |

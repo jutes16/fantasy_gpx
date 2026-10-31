@@ -22,6 +22,8 @@
 #dash-root .bt-type { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: 999px; background: var(--color-bg); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
 #dash-root .bt-type[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
 #dash-root .bt-type:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+#dash-root .bt-btn { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); color: var(--color-fg); cursor: pointer; white-space: nowrap; }
+#dash-root .bt-btn:disabled { color: var(--color-fg-muted); cursor: progress; }
 #dash-root .bt-mark { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); margin-right: var(--cds-gap-sm); vertical-align: middle; }
 #dash-root .bt-mark input[type=checkbox] { width: 1rem; height: 1rem; accent-color: var(--color-ok); cursor: pointer; }
 #dash-root .bt-mark input[type=text] { width: 3.6rem; font: inherit; font-size: var(--cds-font-size-caption); padding: 0 var(--cds-pad-xs); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); }
@@ -166,7 +168,9 @@
           <option value="P">Push</option><option value="open">Open</option><option value="void">Void</option>
         </select>
         <input class="bt-search" id="b-search" type="search" placeholder="Search player, team, game" aria-label="Search bets">
+        <button class="bt-btn" type="button" id="k-refresh" hidden>Refresh my Kalshi bets</button>
       </div>
+      <p class="bt-note" id="k-refresh-note" hidden></p>
       <p class="bt-note" id="b-count">—</p>
       <div class="bt-scroll">
         <table class="bt-table" id="bet-table" data-source="bets" data-row-key="id">
@@ -175,6 +179,7 @@
             <th class="bt-hide-narrow" data-field="type_name">Type</th><th class="bt-r" data-field="price">Price</th>
             <th class="bt-r" data-field="ev">EV</th><th class="bt-r" data-field="stake">Stake</th>
             <th data-field="result">Result</th><th class="bt-r" data-field="pnl">P&amp;L</th>
+            <th class="bt-r" data-field="market_p">Now</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -185,10 +190,11 @@
   <!-- ANALYSIS -->
   <section class="bt-page" id="analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
     <div class="bt-row">
-      <h1 id="an-title">Week <span data-source="props_week" data-field="week" data-row="0">—</span> recommendations</h1>
+      <h1 id="an-title">Week <span data-source="games_week" data-field="week" data-row="0">—</span> recommendations</h1>
       <span class="bt-seg" role="group" aria-label="Sheet">
         <button class="bt-chip" type="button" data-k="sheet" data-v="props" aria-pressed="true">Player props</button>
         <button class="bt-chip" type="button" data-k="sheet" data-v="games" aria-pressed="false">Game bets (ELWAY)</button>
+        <button class="bt-chip" type="button" data-k="sheet" data-v="season" aria-pressed="false">Season bets (ELWAY)</button>
       </span>
     </div>
 
@@ -210,9 +216,11 @@
         <table class="bt-table" id="props-table" data-source="props_week" data-row-key="id">
           <thead><tr>
             <th data-field="player">Player</th><th data-field="prop">Prop</th><th data-field="pick">Pick</th>
-            <th class="bt-r" data-field="price">Price</th><th data-field="book">Book</th><th class="bt-hide-narrow" data-field="sunday">Sun 10 am</th><th class="bt-r" data-field="slp_proj">Proj.</th>
+            <th class="bt-r" data-field="price">Price</th><th data-field="book">Where</th>
+            <th class="bt-r" data-field="p_slp">Sleeper</th><th class="bt-r" data-field="ev_slp">EV</th><th class="bt-r" data-field="stake_scaled">Scaled stake</th>
+            <th class="bt-hide-narrow" data-field="sunday">Sun 10 am</th><th class="bt-r" data-field="slp_proj">Proj.</th>
             <th class="bt-r" data-field="proj_diff">Proj. diff</th><th class="bt-c" data-field="rating">Rating</th>
-            <th class="bt-r" data-field="ev_slp">Proj. EV</th><th class="bt-c" data-field="opp_rank">Opp vs prop</th>
+            <th class="bt-c" data-field="opp_rank">Opp vs prop</th>
             <th class="bt-c" data-field="hit_l5">L-5</th><th class="bt-c" data-field="hit_l10">L-10</th>
             <th class="bt-c" data-field="hit_season">Season</th>
           </tr></thead>
@@ -229,15 +237,38 @@
         </span>
       </div>
       <p class="bt-note"><b>Prices as of <span data-source="games_week" data-field="as_of" data-row="0">—</span></b> (Kalshi asks then; sportsbook prices are nflverse's consensus line). Tick <b>Bet</b> on what you actually bet; add your stake and, if different, your price (Kalshi in cents, e.g. 38).</p>
-      <p class="bt-note">ELWAY's simulated margins priced against Kalshi and the sportsbooks. One recommended bet per game: the best EV. Market = what the price implies (Kalshi: the cost including the fee). Scaled stake = EV ÷ 0.15, capped 0.5–2u. ELWAY has rated PHI above the market every week since week 4; those bets are tagged.</p>
+      <p class="bt-note">ELWAY's simulated margins priced against Kalshi and the sportsbooks. One recommended bet per game: the best EV. Scaled stake = EV ÷ 0.15, capped 0.5–2u. ELWAY has rated PHI above the market every week since week 4; those bets are tagged.</p>
       <div class="bt-scroll">
         <table class="bt-table" id="games-table" data-source="games_week" data-row-key="id">
           <thead><tr>
-            <th data-field="game">Game</th><th class="bt-hide-narrow" data-field="kickoff">Kickoff</th>
-            <th data-field="bet">Bet</th><th class="bt-hide-narrow" data-field="type_name">Type</th>
-            <th class="bt-r" data-field="price">Price</th><th class="bt-hide-narrow" data-field="where">Where</th>
-            <th class="bt-r" data-field="elway_p">ELWAY</th><th class="bt-r" data-field="cost">Market</th>
-            <th class="bt-r" data-field="ev">EV</th><th class="bt-r" data-field="stake_scaled">Scaled stake</th>
+            <th data-field="game">Game</th><th data-field="bet">Bet</th>
+            <th class="bt-r" data-field="price">Price</th><th data-field="venue">Where</th>
+            <th class="bt-r" data-field="elway_p">ELWAY</th><th class="bt-r" data-field="ev">EV</th><th class="bt-r" data-field="stake_scaled">Scaled stake</th>
+            <th class="bt-hide-narrow" data-field="kickoff">Kickoff</th><th class="bt-hide-narrow" data-field="type_name">Type</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="bt-card" id="season-sheet" hidden>
+      <div class="bt-controls">
+        <span class="bt-seg" role="group" aria-label="Which teams">
+          <button class="bt-chip" type="button" data-k="sall" data-v="rec" aria-pressed="true">Recommended</button>
+          <button class="bt-chip" type="button" data-k="sall" data-v="all" aria-pressed="false">Every team</button>
+        </span>
+      </div>
+      <p class="bt-note"><b>Kalshi prices as of <span data-source="season_week" data-field="as_of" data-row="0">—</span>; ELWAY's season numbers as of <span data-source="season_week" data-field="elway_as_of" data-row="0">—</span>.</b> A paper test (season.py), graded in January.</p>
+      <p class="bt-note">ELWAY's simulated season (wins and playoff odds) priced against Kalshi's season markets ("wins at least N" and "makes the playoffs"), both sides, at the ask plus Kalshi's fee. One bet per team, its best side priced 20–80¢: every rung of a team's ladder is the same opinion. EV is discounted for money tied up until January at 3.5% a year (EV before discount beside it); recommended = EV of 10% or more. Tick <b>Bet</b> to note what you bought: your real season bets come from your Kalshi account at the next refresh. Scaled stake = EV ÷ 0.15, capped 0.5–2u (the same rule as the game bets). Playoffs this week = ELWAY's playoff odds if the team loses, now, and if it wins (blank = bye): a big swing means this week's game decides most of the bet, and the game itself on Kalshi is the quicker way to back it.</p>
+      <div class="bt-scroll">
+        <table class="bt-table" id="season-table" data-source="season_week" data-row-key="id">
+          <thead><tr>
+            <th data-field="team">Team</th><th data-field="bet">Bet</th><th class="bt-r" data-field="price">Price</th><th data-field="venue">Where</th>
+            <th class="bt-r" data-field="elway_p">ELWAY</th><th class="bt-r" data-field="ev_adj">EV</th>
+            <th class="bt-r" data-field="stake_scaled">Scaled stake</th><th class="bt-r bt-hide-narrow" data-field="ev">EV before discount</th>
+            <th class="bt-r bt-hide-narrow" data-field="elway_wins">Wins: ELWAY</th><th class="bt-r bt-hide-narrow" data-field="kalshi_wins">Kalshi</th>
+            <th class="bt-c bt-hide-narrow" data-field="po_now">Playoffs this week (L · now · W)</th>
+            <th class="bt-r bt-hide-narrow" data-field="volume">Volume</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -320,7 +351,7 @@
 
 <script>
 window.bt = (() => {
-  const state = { tab: 'dashboard', scope: 'mine', type: 'mine', view: 'all', stake: 'flat', window: 'season', metric: 'profit', sheet: 'props', psig: 'pick', gall: 'rec' };
+  const state = { tab: 'dashboard', scope: 'mine', type: 'mine', view: 'all', stake: 'flat', window: 'season', metric: 'profit', sheet: 'props', psig: 'pick', gall: 'rec', sall: 'rec' };
   const listeners = [];
   const set = (k, v) => { state[k] = v; listeners.forEach((f) => f()); };
   const fmt = {
@@ -389,7 +420,23 @@ window.bt = (() => {
   };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const num = (v) => (v == null || v === '' ? null : +v);
-  return { state, set, onChange: (f) => listeners.push(f), fmt, tip, table, message, el, num };
+  // a price as you'd place it, with its implied probability under it (Kalshi: also the odds after the fee)
+  const american = (cost) => { const d = 1 / cost; return d >= 2 ? `+${Math.round((d - 1) * 100)}` : `−${Math.round(100 / (d - 1))}`; };
+  const priceCell = (v) => {
+    const s = String(v ?? '').trim();
+    if (!s) return '—';
+    const box = (top, sub) => { const b = el('div', 'bt-player'); b.append(el('span', null, top), el('span', 'bt-sub', sub)); return b; };
+    let m = s.match(/^(\d+(?:\.\d+)?)¢$/);
+    if (m) { const p = +m[1] / 100, c = p + 0.07 * p * (1 - p); return box(s, `${american(c)} · ${d3.format('.0%')(c)} with fee`); }
+    m = s.match(/^([+−-])(\d+)$/);
+    if (m) { const a = +m[2], dec = m[1] === '+' ? 1 + a / 100 : 1 + 100 / a; return box(s.replace('-', '−'), `${d3.format('.0%')(1 / dec)} implied`); }
+    return s;
+  };
+  // the columns every analysis sheet shares: model probability, EV, scaled stake
+  const pctCell = (v) => (v == null || isNaN(v) ? '—' : d3.format('.0%')(v));
+  const evCell = (v) => (v == null || isNaN(v) ? '—' : d3.format('+.0%')(v).replace('-', '−'));
+  const stakeCell = (v) => (v == null || isNaN(v) ? '—' : `${d3.format('.2~f')(v)}u`);
+  return { state, set, onChange: (f) => listeners.push(f), fmt, tip, table, message, el, num, priceCell, pctCell, evCell, stakeCell };
 })();
 
 // tabs, segmented controls, links
@@ -422,6 +469,7 @@ window.bt = (() => {
     document.getElementById('type-note-mine').hidden = state.scope !== 'mine';
     document.getElementById('props-sheet').hidden = state.sheet !== 'props';
     document.getElementById('games-sheet').hidden = state.sheet !== 'games';
+    document.getElementById('season-sheet').hidden = state.sheet !== 'season';
   });
   const named = location.hash.slice(1);
   if (named === 'analysis' || named === 'pool') show(named);
@@ -496,11 +544,13 @@ window.bt = (() => {
     box.classList.toggle('dash-skeleton', d.status === 'loading');
     if (d.status !== 'ok') { message(box, d.status === 'error' || d.status === 'connect' ? 'Failed to load' : '', true); return; }
     message(box, '');
+    const k = state.metric === 'roi' ? 'cum_roi' : 'cum_profit';
+    // ROI has no value until something is wagered: start the line at the first week that has one
     const rows = d.data.filter((r) => r.filter === state.type && r.view === state.view && r.stake === state.stake)
-      .map((r) => ({ ...r, week: +r.week, cum_profit: +r.cum_profit, cum_roi: r.cum_roi == null ? null : +r.cum_roi, profit: +r.profit, cum_wagers: +r.cum_wagers }))
+      .map((r) => ({ ...r, week: +r.week, cum_profit: +r.cum_profit, cum_roi: window.bt.num(r.cum_roi), profit: +r.profit, cum_wagers: +r.cum_wagers }))
+      .filter((r) => r[k] != null && !isNaN(r[k]))
       .sort((a, b) => a.week - b.week);
     if (!rows.length) { message(box, 'No graded bets for this filter yet'); return; }
-    const k = state.metric === 'roi' ? 'cum_roi' : 'cum_profit';
     const pts = [{ week: rows[0].week - 1, [k]: 0, start: true }, ...rows];
     const W = box.clientWidth, H = 260, m = { t: 12, r: 52, b: 28, l: 8 };
     const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
@@ -587,10 +637,18 @@ window.bt = (() => {
     ? (r.pnl_dollars != null ? `${dollars(r.pnl_dollars, true)} (${fmt.u(r.pnl)})` : fmt.u(r.pnl))
     : fmt.u(state.stake === 'flat' ? r.pnl : r.scaled_pnl));
   const pill = (v) => el('span', `bt-pill ${v}`, { W: 'Won', L: 'Lost', P: 'Push', void: 'Void', open: 'Open' }[v] || v);
+  // open Kalshi bets at today's price: chance by the market (and ELWAY, for season bets), and what they'd sell for
+  const nowCell = (v, r) => {
+    if (r.result !== 'open' || v == null) return '';
+    const b = el('div', 'bt-player');
+    b.append(el('span', null, `${d3.format('.0%')(v)}${r.elway_p != null ? ` · ELWAY ${d3.format('.0%')(r.elway_p)}` : ''}`));
+    if (r.value_dollars != null) b.append(el('span', 'bt-sub', `worth ${dollars(r.value_dollars)} (${dollars(r.unrealized_dollars, true)})`));
+    return b;
+  };
   const betCell = (v, r) => { const s = el('span', null, v); if (r.phi) s.appendChild(el('span', 'bt-tag', 'PHI')); return s; };
   const cells = [['week', String, 'bt-r'], ['bet', betCell], ['game', String, 'bt-hide-narrow'], ['type_name', String, 'bt-hide-narrow'],
-    ['price', String, 'bt-r'], ['ev', (v) => (v == null ? '—' : d3.format('+.2f')(v)), 'bt-r'],
-    ['stake', stakeCell, 'bt-r'], ['result', pill], ['pnl', pnlCell, 'bt-r']];
+    ['price', window.bt.priceCell, 'bt-r'], ['ev', (v) => (v == null ? '—' : d3.format('+.2f')(v)), 'bt-r'],
+    ['stake', stakeCell, 'bt-r'], ['result', pill], ['pnl', pnlCell, 'bt-r'], ['market_p', nowCell, 'bt-r']];
   [week, result].forEach((s) => s.addEventListener('change', () => tbl._draw && draw()));
   search.addEventListener('input', () => draw());
   const draw = () => {
@@ -598,17 +656,79 @@ window.bt = (() => {
     const d = dash.data('bets');
     tbl.classList.toggle('dash-skeleton', d.status === 'loading');
     all = d.status === 'ok' ? d.data.map((r) => ({ ...r, week: +r.week, ev: window.bt.num(r.ev), stake_scaled: +r.stake_scaled, pnl: window.bt.num(r.pnl), scaled_pnl: window.bt.num(r.scaled_pnl), stake: +r.stake,
-      stake_dollars: window.bt.num(r.stake_dollars), pnl_dollars: window.bt.num(r.pnl_dollars), phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
+      stake_dollars: window.bt.num(r.stake_dollars), pnl_dollars: window.bt.num(r.pnl_dollars),
+      market_p: window.bt.num(r.market_p), elway_p: window.bt.num(r.elway_p), value_dollars: window.bt.num(r.value_dollars), unrealized_dollars: window.bt.num(r.unrealized_dollars), phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
     const weeks = [...new Set(all.map((r) => r.week))].sort((a, b) => b - a);
     if (week.options.length !== weeks.length + 1) week.replaceChildren(new Option('All weeks', ''), ...weeks.map((w) => new Option(`Week ${w}`, w)));
     const rows = shown();
     const g = rows.filter((r) => ['W', 'L', 'P'].includes(r.result));
     const p = d3.sum(g, (r) => (state.stake === 'flat' ? r.pnl : r.scaled_pnl));
-    count.textContent = `${rows.length} bets shown · ${g.filter((r) => r.result === 'W').length}-${g.filter((r) => r.result === 'L').length}-${g.filter((r) => r.result === 'P').length} graded · ${fmt.u(p)}`;
+    const open = rows.filter((r) => r.result === 'open' && r.value_dollars != null);
+    const marked = open.length ? ` · ${open.length} open worth ${dollars(d3.sum(open, (r) => r.value_dollars))} now (${dollars(d3.sum(open, (r) => r.unrealized_dollars), true)} vs cost)` : '';
+    count.textContent = `${rows.length} bets shown · ${g.filter((r) => r.result === 'W').length}-${g.filter((r) => r.result === 'L').length}-${g.filter((r) => r.result === 'P').length} graded · ${fmt.u(p)}${marked}`;
     table(tbl, shown, cells, (r) => r.id);
   };
   dash.onData(draw);
   window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// "Refresh my Kalshi bets": kalshi_mcp.py on your Mac (a local MCP server, Claude desktop app only) runs
+// kalshi_mine.py + hq.py and returns the bets, timeline and summary; the page saves them as this dashboard's data
+(() => {
+  const btn = document.getElementById('k-refresh'), note = document.getElementById('k-refresh-note');
+  const SERVER = 'host:kalshi_hq', SETS = ['bets', 'timeline', 'summary'];
+  const say = (t, err) => { note.hidden = !t; note.textContent = t || ''; note.classList.toggle('bt-err', !!err); };
+  const WHY = {
+    server_not_connected: 'The refresh runs on your Mac: open this dashboard in the Claude desktop app, with the kalshi_hq helper added (see nfl_bets/kalshi_mcp.py).',
+    server_not_found: 'The kalshi_hq helper isn\'t set up in the Claude app yet (see nfl_bets/kalshi_mcp.py).',
+    not_in_manifest: 'This dashboard isn\'t allowed to reach the kalshi_hq helper. Ask Claude in the Code tab to "refresh my Kalshi bets" instead.',
+    self_only: 'Only the dashboard\'s owner can refresh from their Mac.',
+    not_granted: 'The Claude app wasn\'t allowed to run the helper.', consent_required: 'The Claude app wasn\'t allowed to run the helper.',
+    cancelled: 'Refresh cancelled.', server_unavailable: 'The helper didn\'t answer in time. Try again in a minute.',
+  };
+  let mcp = null, assets = null, db = null;
+  (async () => {
+    if (!window.claude) return;
+    [mcp, assets, db] = await Promise.all(['mcp', 'assets', 'db'].map((n) => window.claude.use(n).catch(() => null)));
+    btn.hidden = !(mcp && assets && db);                // the owner, signed in, in a view that can save
+  })();
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    let out;
+    try {
+      const perms = await window.claude.use('permissions').catch(() => null);   // a helper outside the template's list needs your OK first
+      const scope = 'mcp:' + SERVER;
+      let st = perms ? await perms.state(scope).catch(() => 'unavailable') : 'unavailable';
+      if (st === 'prompt') st = (await perms.request([scope]).catch(() => ({})))[scope] || st;
+      if (st === 'denied') { say('The helper is turned off for this dashboard: switch it back on in the dashboard\'s Permissions menu.', true); btn.disabled = false; return; }
+      say('Pulling your Kalshi bets on your Mac (read-only)…');
+      out = (await mcp.callTool(SERVER, 'refresh_my_kalshi', {})).payload;
+      if (!out || !Array.isArray(out.bets)) throw { code: 'bad_answer' };
+    } catch (e) {
+      say(e.code === 'tool_error' ? `The pull failed on your Mac: ${(e.message || '').slice(0, 300)}` : (WHY[e.code] || `Refresh didn't run (${e.code || 'error'}).`), true);
+      btn.disabled = false; return;
+    }
+    try {
+      say('Saving…');
+      for (const id of SETS) {
+        const ref = db.doc('datasets/' + id);
+        const old = (await ref.get()).data();
+        if (!old || !old.source) continue;
+        const up = await assets.upload(new Blob([JSON.stringify(out[id])], { type: 'application/json' }));
+        await ref.update({ source: { ...old.source, url: '/_blob/' + up.id }, updated: { at: out.at, by: 'Refresh button (kalshi_mcp.py)' } });
+        const was = String(old.source.url || '').match(/_blob\/([0-9a-f]{32})/);
+        if (was && was[1] !== up.id) assets.delete(was[1]).catch(() => {});
+        dash.refresh(id);
+      }
+      const t = new Date(out.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      say(`Refreshed at ${t}: ${(out.log || [])[0] || 'done'}.`);
+    } catch (e) {
+      say(`Pulled, but saving to the dashboard failed (${e.code || e.message || 'error'}).`, true);
+    }
+    btn.disabled = false;
+  });
 })();
 </script>
 
@@ -709,10 +829,11 @@ window.btMine = (() => {
     }
     return s;
   };
-  const cells = [['player', player], ['prop', prop], ['pick', pick], ['price', String, 'bt-r'], ['book', (v) => v || '—'], ['sunday', (v) => v || '—', 'bt-hide-narrow'],
+  const cells = [['player', player], ['prop', prop], ['pick', pick], ['price', window.bt.priceCell, 'bt-r'], ['book', (v) => v || '—'],
+    ['p_slp', window.bt.pctCell, 'bt-r'], ['ev_slp', window.bt.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'],
+    ['sunday', (v) => v || '—', 'bt-hide-narrow'],
     ['slp_proj', proj, 'bt-r'], ['proj_diff', (v) => (v == null ? '—' : d3.format('+.1f')(v).replace('-', '−')), 'bt-r'],
-    ['rating', stars, 'bt-c'], ['ev_slp', (v) => (v == null ? '—' : d3.format('+.0%')(v).replace('-', '−')), 'bt-r'],
-    ['opp_rank', rank, 'bt-c'], ['hit_l5', heat, 'bt-c'], ['hit_l10', heat, 'bt-c'], ['hit_season', heat, 'bt-c']];
+    ['rating', stars, 'bt-c'], ['opp_rank', rank, 'bt-c'], ['hit_l5', heat, 'bt-c'], ['hit_l10', heat, 'bt-c'], ['hit_season', heat, 'bt-c']];
   const shown = () => {
     const q = search.value.trim().toLowerCase();
     return all.filter((r) => (state.psig === 'all' || (state.psig === 'pick' ? r.is_pick : r.signal.includes(state.psig))) && (!market.value || r.prop.endsWith(market.value))
@@ -726,12 +847,13 @@ window.btMine = (() => {
     const d = dash.data('props_week');
     tbl.classList.toggle('dash-skeleton', d.status === 'loading');
     all = d.status === 'ok' ? d.data.map((r) => ({ ...r, slp_proj: window.bt.num(r.slp_proj), mkt_proj: window.bt.num(r.mkt_proj), proj_diff: window.bt.num(r.proj_diff),
-      is_pick: r.is_pick === true || r.is_pick === 'true' || r.is_pick === 'True', rating: +r.rating, ev_slp: window.bt.num(r.ev_slp), opp_rank: window.bt.num(r.opp_rank), hit_l5: window.bt.num(r.hit_l5), hit_l10: window.bt.num(r.hit_l10), hit_season: window.bt.num(r.hit_season) })) : [];
+      is_pick: r.is_pick === true || r.is_pick === 'true' || r.is_pick === 'True', rating: +r.rating, ev_slp: window.bt.num(r.ev_slp), p_slp: window.bt.num(r.p_slp), stake_scaled: window.bt.num(r.stake_scaled), opp_rank: window.bt.num(r.opp_rank), hit_l5: window.bt.num(r.hit_l5), hit_l10: window.bt.num(r.hit_l10), hit_season: window.bt.num(r.hit_season) })) : [];
     const kinds = [...new Set(all.map((r) => r.prop.replace(/^[\d.]+ /, '')))].sort();
     if (market.options.length !== kinds.length + 1) market.replaceChildren(new Option('All props', ''), ...kinds.map((k) => new Option(k, k)));
     if (!tbl._sort) tbl._sort = { key: 'rating', dir: -1 };
     table(tbl, shown, cells, (r) => r.id, (tr, r) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
-    const wk = all.length ? all[0].week : null, mine = wk == null ? [] : window.btMine.count(wk);
+    const gw = dash.data('games_week');
+    const wk = all.length ? all[0].week : (gw.status === 'ok' && gw.data.length ? gw.data[0].week : null), mine = wk == null ? [] : window.btMine.count(wk);
     const st = window.btMine.status();
     document.getElementById('mine-count').textContent = st === 'failed' ? 'Saving bets isn\'t available in this view.'
       : st === 'loading' ? '' : `You've marked ${mine.length} bet${mine.length === 1 ? '' : 's'} this week (${d3.sum(mine, (m) => +m.stake || 0)}u).`;
@@ -751,10 +873,10 @@ window.btMine = (() => {
   const bet = (v, r) => { const s = el('span', null, (r.recommended ? '★ ' : '') + v); if (r.phi) s.appendChild(el('span', 'bt-tag', 'PHI')); return s; };
   const kick = (v) => { const t = new Date(v); return isNaN(t) ? v : d3.timeFormat('%a %-I:%M%p')(t).replace('AM', 'a').replace('PM', 'p'); };
   const gameCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('game', r, `${r.game}: ${r.bet} (${r.type_name})`).wrap, document.createTextNode(v)); return s; };
-  const cells = [['game', gameCell], ['kickoff', kick, 'bt-hide-narrow'], ['bet', bet], ['type_name', String, 'bt-hide-narrow'],
-    ['price', String, 'bt-r'], ['where', (v) => (v && v.startsWith('KX') ? 'Kalshi' : v || '—'), 'bt-hide-narrow'],
-    ['elway_p', fmt.p0, 'bt-r'], ['cost', fmt.p0, 'bt-r'], ['ev', (v) => (v == null ? '—' : d3.format('+.0%')(v)), 'bt-r'],
-    ['stake_scaled', fmt.u0, 'bt-r']];
+  const cells = [['game', gameCell], ['bet', bet], ['price', window.bt.priceCell, 'bt-r'],
+    ['venue', (v, r) => v || (r.where && r.where.startsWith('KX') ? 'Kalshi' : 'Sportsbook')],
+    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev', window.bt.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'],
+    ['kickoff', kick, 'bt-hide-narrow'], ['type_name', String, 'bt-hide-narrow']];
   const draw = () => {
     const d = dash.data('games_week');
     const p = dash.data('props_week');
@@ -763,7 +885,8 @@ window.btMine = (() => {
       const ds = dash.data(e.dataset.source); e.textContent = ds.status === 'ok' && ds.data.length ? etTime(ds.data[0].as_of) : '—';
     });
     const wk = title.querySelector('[data-source]');
-    wk.textContent = p.status === 'ok' && p.data.length ? p.data[0].week : '—';
+    const wkOf = (ds) => (ds.status === 'ok' && ds.data.length ? +ds.data[0].week : null);
+    wk.textContent = Math.max(wkOf(p) || 0, wkOf(d) || 0) || '—';
     if (state.tab !== 'analysis') return;
     tbl.classList.toggle('dash-skeleton', d.status === 'loading');
     all = d.status === 'ok' ? d.data.map((r) => ({ ...r, elway_p: +r.elway_p, cost: +r.cost, ev: +r.ev, stake_scaled: +r.stake_scaled,
@@ -773,6 +896,41 @@ window.btMine = (() => {
       (tr) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
   };
   window.btMine.onChange(() => draw());
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// analysis: ELWAY season bets sheet
+(() => {
+  const { state, table, el } = window.bt;
+  const tbl = document.getElementById('season-table');
+  window.btMine.onChange(() => draw());
+  const bet = (v, r) => el('span', null, (r.recommended ? '★ ' : '') + v);
+  const swing = (v, r) => (r.po_win == null ? (v == null ? '—' : `${d3.format('.0f')(v)}% (bye)`)
+    : `${d3.format('.0f')(r.po_loss)}% · ${d3.format('.0f')(v)}% · ${d3.format('.0f')(r.po_win)}%`);
+  const teamCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('season', r, `${r.bet} (season)`).wrap, document.createTextNode(v)); return s; };
+  const cells = [['team', teamCell], ['bet', bet], ['price', (v) => window.bt.priceCell(`${v}¢`), 'bt-r'], ['venue', (v) => v || 'Kalshi'],
+    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev_adj', window.bt.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'], ['ev', window.bt.evCell, 'bt-r bt-hide-narrow'], ['elway_wins', (v) => (v == null ? '—' : d3.format('.1f')(v)), 'bt-r bt-hide-narrow'],
+    ['kalshi_wins', (v) => (v == null ? '—' : d3.format('.1f')(v)), 'bt-r bt-hide-narrow'], ['po_now', swing, 'bt-c bt-hide-narrow'],
+    ['volume', (v) => (v == null ? '—' : d3.format(',')(v)), 'bt-r bt-hide-narrow']];
+  const num = window.bt.num;
+  const etTime = (v) => { const t = new Date(v); return isNaN(t) ? '—' : t.toLocaleString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET'; };
+  const draw = () => {
+    const d = dash.data('season_week');
+    document.querySelectorAll('#season-sheet [data-source="season_week"][data-field]').forEach((e) => {
+      e.textContent = d.status === 'ok' && d.data.length ? etTime(d.data[0][e.dataset.field]) : '—';
+    });
+    if (state.tab !== 'analysis') return;
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    const all = d.status === 'ok' ? d.data.map((r) => ({ ...r, price: +r.price, elway_p: num(r.elway_p), kalshi_p: num(r.kalshi_p), ev: num(r.ev), ev_adj: num(r.ev_adj), stake_scaled: num(r.stake_scaled),
+      elway_wins: num(r.elway_wins), kalshi_wins: num(r.kalshi_wins), po_loss: num(r.po_loss), po_now: num(r.po_now), po_win: num(r.po_win), volume: num(r.volume),
+      recommended: r.recommended === true || r.recommended === 'true' })) : [];
+    if (!tbl._sort) tbl._sort = { key: 'ev_adj', dir: -1 };
+    table(tbl, () => all.filter((r) => state.sall === 'all' || r.recommended), cells, (r) => r.id,
+      (tr) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
+  };
   dash.onData(draw);
   window.bt.onChange(draw);
 })();

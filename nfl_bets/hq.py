@@ -22,7 +22,8 @@ import pandas as pd
 
 import bets
 import props
-from common import DATA, SEASON, american_to_decimal, buy_yes
+import season
+from common import DATA, SEASON, american_to_decimal, buy_yes, canon
 
 OUT = os.path.join(DATA, "dashboard_hq")
 TYPE_NAMES = {"kalshi_win": "Kalshi win", "book_ml": "Book moneyline", "kalshi_spread": "Kalshi spread",
@@ -47,6 +48,13 @@ def _price_label(price):
     if 0 < price < 1:                     # Kalshi: dollars per contract
         return f"{round(price * 100)}¢"
     return f"+{int(price)}" if price > 0 else f"{int(price)}"      # American odds
+
+
+def _kalshi_cents(american):
+    """A Kalshi prop logged as American odds after the fee -> the contract price to place, e.g. '38¢'."""
+    cost = 1 / american_to_decimal(american)
+    p = (1.07 - np.sqrt(1.07 ** 2 - 0.28 * cost)) / 0.14          # p + 0.07 p (1 - p) = cost
+    return f"{round(p * 100)}¢"
 
 
 def _num(v, nd=3):
@@ -130,6 +138,7 @@ def my_bets():
         return []
     picks = json.load(open(MY_BETS)) if os.path.exists(MY_BETS) else []
     imported = os.path.exists(KALSHI_MINE)          # your real Kalshi bets (kalshi_mine.py) replace Kalshi ticks
+    picks = [m for m in picks if m["kind"] != "season"]   # season ticks are a note to self: kalshi_mine.py logs the real ones
     if imported:
         picks = [m for m in picks if not (m["kind"] == "game" and str(m.get("book") or "").startswith("KX"))]
     plog = pd.read_csv(props.LOG)
@@ -181,8 +190,39 @@ def my_bets():
                              price="" if k.get("price_cents") is None else f"{k['price_cents']}¢", ev=None,
                              stake=k["stake"], stake_scaled=k["stake"], result=k["result"], pnl=k["pnl"],
                              scaled_pnl=k["pnl"], clv_cents=None, phi="PHI" in k["game"].split(" @ "),
-                             stake_dollars=k.get("cost_dollars"), pnl_dollars=k.get("pnl_dollars")))
+                             stake_dollars=k.get("cost_dollars"), pnl_dollars=k.get("pnl_dollars"),
+                             market_p=k.get("market_p"), value_dollars=k.get("value_dollars"),
+                             unrealized_dollars=k.get("unrealized_dollars"), marked_at=k.get("marked_at"),
+                             elway_p=elway_season_p(k)))
     return rows
+
+
+_SEASON_FEED = {}
+
+
+def elway_season_p(k):
+    """ELWAY's latest probability for an open Kalshi season bet (season.py's saved feed), else None."""
+    import glob
+    import re
+    if k.get("result") != "open" or not str(k.get("ticker", "")).startswith(("KXNFLWINS", "KXNFLPLAYOFF")):
+        return None
+    if not _SEASON_FEED:
+        files = sorted(glob.glob(os.path.join(DATA, "elway", f"season_{SEASON}_wk*_elway-win-totals.csv")))
+        if not files:
+            return None
+        wins = pd.read_csv(files[-1])
+        wins["team"] = wins.home_sb_fran_id.map(canon)
+        cond = pd.read_csv(files[-1].replace("win-totals", "conditional"), na_values=["."])
+        cond["team"] = cond.nickname.map(dict(zip(wins.nickname, wins.team)))
+        _SEASON_FEED.update(dist=season.win_dist(wins), po=dict(zip(cond.team, cond.made_playoffs_unconditional / 100)))
+    t = k["ticker"]
+    m = re.match(r"KXNFLWINS-\d+([A-Z]+)-(\d+)$", t)
+    if m:
+        team = canon(m[1])
+        p = float(_SEASON_FEED["dist"][team][int(m[2]):].sum()) if team in _SEASON_FEED["dist"] else None
+    else:
+        p = _SEASON_FEED["po"].get(canon(t.rsplit("-", 1)[1]))
+    return None if p is None else round(p if k["side"] == "yes" else 1 - p, 3)
 
 
 def performance(all_bets):
@@ -276,10 +316,11 @@ def props_week(week):
                          game=x.game, kickoff=x.kickoff, injury="" if pd.isna(x.injury) else x.injury,
                          prop=("" if x.market == "player_anytime_td" else f"{x.line:g} ") + STAT_LABEL[x.market],
                          pick={"over": "Over", "under": "Under", "yes": "Yes", "no": "No"}[x.side],
-                         price=_price_label(x.price), book=x.book,
+                         price=_kalshi_cents(x.price) if x.book == "Kalshi" else _price_label(x.price), book=x.book,
                          mkt_proj=_num(x.fair_mean, 2), slp_proj=_num(x.slp_mean, 2), proj_diff=_num(diff, 2),
                          rating=stars, p_mkt=_num(x.p_fair), p_slp=_num(x.p_slp), ev_slp=_num(x.ev_slp),
-                         ev_shop=_num(x.ev_shop), signal="PROJ + SHOP" if x.proj and x.shop else ("PROJ" if x.proj else "SHOP"),
+                         ev_shop=_num(x.ev_shop), stake_scaled=round(float(bets.scaled_stake(x.ev_slp)), 2) if not pd.isna(x.ev_slp) else None,
+                         signal="PROJ + SHOP" if x.proj and x.shop else ("PROJ" if x.proj else "SHOP"),
                          sunday=_sunday(rc.get((x.key, x.market, x.side)), x.line, x.side)[0],
                          sunday_at=_sunday(rc.get((x.key, x.market, x.side)), x.line, x.side)[1],
                          is_pick=bool(x.pick), fav=_num(x.opp_factor if x.side in ("over", "yes") else
@@ -311,10 +352,27 @@ def games_week(week):
         rows.append(dict(id=f"{x.game}|{x.instrument}|{x.team}|{x.side}|{'' if pd.isna(x.strike) else x.strike}",
                          week=int(week), as_of=x.logged_at, game=x.game, kickoff=x.kickoff, type=x.instrument, type_name=TYPE_NAMES.get(x.instrument, x.instrument),
                          bet=f"{x.team} {what}", price=_price_label(x.price), where=None if pd.isna(x.ticker) else str(x.ticker),
+                         venue="Kalshi" if str(x.instrument).startswith("kalshi") or x.instrument == "pair" else "Sportsbook",
                          elway_p=_num(x.p), cost=_num(x.cost), ev=_num(x.ev),
                          stake_scaled=round(float(bets.scaled_stake(x.ev)), 2),
                          recommended=str(x.recommended).lower() == "true", phi="PHI" in (x.away, x.home)))
     return rows
+
+
+def season_week():
+    """The latest season-bets batch (season.py): each team's best bet vs Kalshi, with this week's playoff swing."""
+    if not os.path.exists(season.LOG):
+        return []
+    log = pd.read_csv(season.LOG)
+    log = log[(log.season == SEASON) & (log.batch == log.batch.max())]
+    return [dict(id=f"{x.team}|{x.ticker}|{x.side}", week=int(x.week), as_of=x.logged_at, elway_as_of=x.elway_updated,
+                 team=x.team, kind=x.kind, bet=x.bet, ticker=x.ticker, venue="Kalshi", price=round(float(x.price) * 100),
+                 elway_p=_num(x.p), kalshi_p=_num(x.mid), ev=_num(x.ev), ev_adj=_num(x.ev_adj),
+                 elway_wins=_num(x.elway_wins, 1), kalshi_wins=_num(x.kalshi_wins, 1),
+                 po_loss=_num(x.po_loss, 1), po_now=_num(x.po_now, 1), po_win=_num(x.po_win, 1),
+                 volume=None if pd.isna(x.volume) else int(x.volume),
+                 stake_scaled=round(float(bets.scaled_stake(x.ev_adj)), 2),
+                 recommended=str(x.recommended).lower() == "true") for x in log.itertuples()]
 
 
 # ------------------------------------------------------------------ the pool
@@ -418,7 +476,8 @@ def main():
     # the Analysis tab shows the latest week either log has reached (its sheets, graded or not)
     week = max(int(pd.read_csv(props.LOG).week.max()), int(pd.read_csv(bets.LOG).week.max()))
     out = {"bets": sorted(allb, key=lambda b: (-b["week"], b["source"], b["game"])), "timeline": timeline,
-           "summary": summary, "props_week": props_week(week), "games_week": games_week(week)}
+           "summary": summary, "props_week": props_week(week), "games_week": games_week(week),
+           "season_week": season_week()}
     out["pool_picks"], out["pool_weekly"], out["pool_teams"], out["pool_field"] = pool_data()
     stand = os.path.join(DATA, "pool_standings.json")      # your place in the pool, from its sheet (git-ignored)
     out["pool_standings"] = json.load(open(stand)) if os.path.exists(stand) else []

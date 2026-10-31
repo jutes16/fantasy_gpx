@@ -5,8 +5,15 @@ before kickoff and graded afterwards. A paper test, like bets.py: nothing is bet
     python3 props.py sheet 5              # props + Sleeper projections -> sheet, logged
     python3 props.py sheet 5 --cached     # re-use saved props (no credits)
     python3 props.py sheet 5 --no-log     # just print
+    python3 props.py sheet 5 --no-kalshi  # leave Kalshi out
     python3 props.py grade 4              # results from Sleeper's box scores
     python3 props.py report
+
+Kalshi's player-prop ladders ("<player>: N+ <stat>", public, no key) are added as one
+more book at line N - 0.5, wherever a sportsbook quotes that line: over / yes at the ask, under / no at 1 - bid, each plus
+Kalshi's fee, as American odds. Only two-sided quotes (bid-ask within 10c) count.
+Kalshi competes for the best price but isn't part of the fair price (the sportsbooks'
+median), and each pull is saved to data/kalshi/props_<season>_wk<NN>_<time>.csv.
 
 Props come from The Odds API through ../nfl_fantasy/fantasy_props.py (same
 saved files, so a week fetched there costs nothing here). For every player x
@@ -41,7 +48,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-from common import DATA, SEASON, american_to_decimal
+from common import DATA, SEASON, american_to_decimal, kalshi_fee
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "nfl_fantasy"))
@@ -134,6 +141,74 @@ def offers(events):
     return pd.DataFrame(rows)
 
 
+# ------------------------------------------------------------------ Kalshi as a book
+KALSHI_SERIES = {"KXNFLREC": "player_receptions", "KXNFLRECYDS": "player_reception_yds",
+                 "KXNFLRSHYDS": "player_rush_yds", "KXNFLPASSYDS": "player_pass_yds",
+                 "KXNFLPASSTDS": "player_pass_tds", "KXNFLTD": "player_anytime_td"}
+KALSHI_MAX_SPREAD = 0.10     # only two-sided quotes: bid and ask within 10c
+KALSHI_DIR = os.path.join(DATA, "kalshi")
+
+
+def kalshi_path(week, season=SEASON):
+    return os.path.join(KALSHI_DIR, f"props_{season}_wk{week:02d}_" + datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ") + ".csv")
+
+
+def kalshi_quotes(week, season=SEASON, live=True):
+    """Kalshi's "<player>: N+ <stat>" ladders as over/under quotes at line N - 0.5 (public, no key).
+    live: fetch now and save a copy; otherwise the latest saved copy for the week (rebuilding a past week)."""
+    import glob
+    import re
+    if not live:
+        saved = sorted(glob.glob(os.path.join(KALSHI_DIR, f"props_{season}_wk{week:02d}_*.csv")))
+        return pd.read_csv(saved[-1]) if saved else pd.DataFrame()
+    import kalshi
+    rows, now = [], datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for series, market in KALSHI_SERIES.items():
+        try:
+            ms = kalshi.markets(series)
+        except RuntimeError as e:
+            print(f"Kalshi {series}: {e}")
+            continue
+        for m in ms:
+            x = re.match(r"(.+?): (\d+)\+", m.get("title") or "")
+            if x:
+                rows.append(dict(fetched_at=now, ticker=m["ticker"], market=market, player=x[1], key=_normalize_name(x[1]),
+                                 line=int(x[2]) - 0.5, bid=kalshi._f(m.get("yes_bid_dollars")),
+                                 ask=kalshi._f(m.get("yes_ask_dollars")), volume=kalshi._f(m.get("volume_fp"))))
+    q = pd.DataFrame(rows)
+    if len(q):
+        os.makedirs(KALSHI_DIR, exist_ok=True)
+        q.to_csv(kalshi_path(week, season), index=False)
+    return q
+
+
+def _american(cost):
+    """All-in cost of a $1 payout -> American odds."""
+    d = 1 / cost
+    return int(round((d - 1) * 100)) if d >= 2 else int(round(-100 / (d - 1)))
+
+
+def kalshi_offers(q, off):
+    """Kalshi quotes as extra offers for the players and markets the books cover: YES at the ask
+    (over / anytime yes), NO at 1 - bid (under / no), each plus Kalshi's fee."""
+    if q is None or q.empty or off.empty:
+        return pd.DataFrame()
+    q = q[(q.bid > 0) & (q.ask < 1) & (q.ask - q.bid <= KALSHI_MAX_SPREAD)]
+    if q.market.eq("player_anytime_td").any():                       # anytime TD = "1+ touchdowns" only
+        q = q[(q.market != "player_anytime_td") | (q.line == 0.5)]
+    # only at lines the sportsbooks quote: Kalshi competes on price, not by adding alternate lines
+    keys = off.assign(key=off.player.map(_normalize_name)).drop_duplicates(["key", "market", "line"])
+    rows = []
+    for x in q.merge(keys[["key", "market", "line", "player", "away", "home", "kickoff"]], on=["key", "market", "line"],
+                     suffixes=("_k", "")).itertuples():
+        yes, no = x.ask + kalshi_fee(x.ask), (1 - x.bid) + kalshi_fee(1 - x.bid)
+        names = ("yes", "no") if x.market == "player_anytime_td" else ("over", "under")
+        rows.append(dict(player=x.player, away=x.away, home=x.home, kickoff=x.kickoff, fetched_at=x.fetched_at,
+                         market=x.market, book="Kalshi", line=x.line, p=(x.bid + x.ask) / 2,
+                         prices={names[0]: _american(yes), names[1]: _american(no)}))
+    return pd.DataFrame(rows)
+
+
 SLP_COLS = ["key", "name", "pos", "team", "injury", "pass_yd", "pass_td", "rush_yd", "rec", "rec_yd", "td"]
 
 
@@ -172,11 +247,12 @@ def build_sheet(off, slp):
                    zip(off.market, off.line, off.p, off.qb)]
     rows = []
     for (player, market), g in off.groupby(["player", "market"]):
-        books = g.book.nunique()
+        sb = g[g.book != "Kalshi"]                         # the sportsbooks set the fair price; Kalshi only competes on price
+        books = sb.book.nunique()
         if books < MIN_BOOKS:
             continue
-        r0 = g.iloc[0]
-        fair = float(g["mean"].median())
+        r0 = sb.iloc[0]
+        fair = float(sb["mean"].median())
         s = slp.loc[r0.key] if r0.key in slp.index else None
         smean = None if s is None else s[SLEEPER_STAT[market]]
         if smean is not None and (pd.isna(smean) or smean <= 0):
@@ -184,7 +260,7 @@ def build_sheet(off, slp):
         smean = None if smean is None else float(smean)
         best = {}
         for o in g.itertuples():
-            others = g[g.book != o.book]["mean"]
+            others = sb[sb.book != o.book]["mean"]
             loo = float(others.median())                   # fair without this book
             for side, price in o.prices.items():
                 pw, pp = p_side(market, loo, o.line, side, o.qb)
@@ -227,11 +303,11 @@ def print_sheet(d, week, top=15):
         ps = "    -" if pd.isna(r.p_slp) else f"{r.p_slp:>5.0%}"
         inj = {"Out": "OUT", "Questionable": "Q", "Doubtful": "D", "IR": "IR"}.get(r.injury, str(r.injury)[:3])
         return (f"  {r.player:<22}{str(r.team or ''):<5}{inj:<4}{SHORT[r.market]:<11}{side + ln:<11}"
-                f"{_fmt_price(r.price):>6} {r.book:<13}{r.fair_mean:>7.1f}{r.p_fair:>6.0%}"
+                f"{_fmt_price(r.price):>6}{1 / american_to_decimal(r.price):>4.0%} {r.book:<13}{r.fair_mean:>7.1f}{r.p_fair:>6.0%}"
                 f"{slp}{ps}{r.ev_shop:>+7.1%}{(r.ev_slp if pd.notna(r.ev_slp) else np.nan):>+7.1%}"
                 f"{'' if pd.isna(r.hit_rate) else f'{r.hit_rate:.0%}':>7}"
                 f"{'' if pd.isna(r.opp_factor) else f'{r.opp} {r.opp_factor:.2f}':>9}")
-    hdr = (f"  {'player':<22}{'team':<5}{'inj':<4}{'market':<11}{'bet':<11}{'price':>6} {'book':<13}"
+    hdr = (f"  {'player':<22}{'team':<5}{'inj':<4}{'market':<11}{'bet':<11}{'price':>6}{'imp':>4} {'book':<13}"
            f"{'mktavg':>7}{'P mkt':>6}{'Sleepr':>7}{'P slp':>5}{'EV mkt':>7}{'EV slp':>7}{'L8 hit':>7}{'opp':>9}")
     print("=" * 128)
     print(f"PLAYER PROPS  week {week}   {d.player.nunique()} players, {len(d)} priced sides, "
@@ -252,7 +328,7 @@ def print_sheet(d, week, top=15):
         print(line(r))
     print(f"\n  {int(d.proj.sum())} PROJ and {int(d.shop.sum())} SHOP flags "
           f"({int((d.proj & d.shop).sum())} both).  mktavg / Sleepr: projected stat; "
-          "EV per 1 unit at the price shown.")
+          "EV per 1 unit at the price shown; imp = the price's implied probability (Kalshi: after its fee).")
     print("  L8 hit: share of his last 8 games that would have won this bet at this line. opp: the")
     print("  opponent's allowed / league average for his position and stat (>1 = soft for overs).")
     if d.injury.isin(["Out", "Doubtful", "IR"]).any():
@@ -303,7 +379,7 @@ def write_log(d, week):
     print(f"\nlogged {len(d)} sides for week {week} -> {os.path.relpath(LOG)}")
 
 
-def sheet(week, cached=False, log=True, season=SEASON):
+def sheet(week, cached=False, log=True, season=SEASON, kalshi=True):
     events = fp.fetch_props(week, season, cached=cached)
     now = pd.Timestamp.now(tz="UTC")
     if not cached:
@@ -311,8 +387,13 @@ def sheet(week, cached=False, log=True, season=SEASON):
     off = offers(events)
     if off.empty:
         raise SystemExit("no props -- check ODDS_API_KEY, or fetch with fantasy_props.py first")
+    started = cached and pd.Timestamp(off.kickoff.min()) < now
+    if kalshi:                                 # Kalshi's prop ladders as one more book (free)
+        k = kalshi_offers(kalshi_quotes(week, season, live=not started), off)
+        print(f"Kalshi: {len(k)} prop quotes matched to the books' players" + (" (saved copy)" if started else ""))
+        off = pd.concat([off, k], ignore_index=True) if len(k) else off
     snap = snapshot_path(week, season)
-    if cached and pd.Timestamp(off.kickoff.min()) < now:
+    if started:
         # rebuilding a week that has started: use Sleeper as it was when logged, never today's
         if not os.path.exists(snap):
             raise SystemExit(f"no Sleeper snapshot from before kickoff ({os.path.relpath(snap)})")
@@ -482,7 +563,7 @@ def main():
     week = int(a[1])
     if a[0] == "grade":
         return grade(week)
-    sheet(week, cached="--cached" in a, log="--no-log" not in a)
+    sheet(week, cached="--cached" in a, log="--no-log" not in a, kalshi="--no-kalshi" not in a)
 
 
 if __name__ == "__main__":
