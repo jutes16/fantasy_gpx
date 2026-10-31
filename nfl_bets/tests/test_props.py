@@ -64,3 +64,33 @@ def test_snapshot_window():
                               kickoff=pd.to_datetime(["2026-10-25T13:30:00Z", "2026-10-25T17:00:00Z",
                                                       "2026-10-25T17:25:00Z", "2026-10-26T00:20:00Z"])))
     assert list(snapshot.kicking_off(sched, now, 2.5).away) == ["B", "C"]
+
+
+def test_kalshi_quotes_become_offers_at_the_books_lines():
+    import pandas as pd
+    from common import kalshi_fee
+    off = pd.DataFrame([dict(player="Jake Ferguson", away="DAL", home="ARI", kickoff="2026-11-01T17:00:00Z", fetched_at="",
+                             market="player_receptions", book="FanDuel", line=1.5, p=0.63, prices={"over": -188, "under": 150})])
+    q = pd.DataFrame([
+        dict(fetched_at="t", ticker="A", market="player_receptions", player="Jake Ferguson", key="jakeferguson", line=1.5, bid=0.62, ask=0.65, volume=0),
+        dict(fetched_at="t", ticker="B", market="player_receptions", player="Jake Ferguson", key="jakeferguson", line=2.5, bid=0.35, ask=0.37, volume=0),  # no book quotes 2.5
+        dict(fetched_at="t", ticker="C", market="player_receptions", player="Jake Ferguson", key="jakeferguson", line=1.5, bid=0.10, ask=0.90, volume=0),  # one-sided
+    ])
+    k = props.kalshi_offers(q, off)
+    assert len(k) == 1 and k.iloc[0].book == "Kalshi" and k.iloc[0].line == 1.5
+    over, under = k.iloc[0].prices["over"], k.iloc[0].prices["under"]
+    assert 1 / props.american_to_decimal(over) == pytest.approx(0.65 + kalshi_fee(0.65), abs=0.003)
+    assert 1 / props.american_to_decimal(under) == pytest.approx(0.38 + kalshi_fee(0.38), abs=0.003)
+
+
+def test_kalshi_left_out_of_the_fair_price():
+    import pandas as pd
+    rows = [dict(player="P", away="A", home="H", kickoff="k", fetched_at="", market="player_receptions", book=b,
+                 line=4.5, p=0.5, prices={"over": -110, "under": -110}) for b in ("B1", "B2", "B3")]
+    rows.append(dict(player="P", away="A", home="H", kickoff="k", fetched_at="", market="player_receptions", book="Kalshi",
+                     line=4.5, p=0.9, prices={"over": 100, "under": -400}))
+    slp = pd.DataFrame([dict(key="p", name="P", pos="WR", team="H", injury="", pass_yd=0, pass_td=0, rush_yd=0, rec=4.6, rec_yd=50, td=0.3)])
+    d = props.build_sheet(pd.DataFrame(rows), slp).set_index("side")
+    assert d.loc["over", "book"] == "Kalshi" and d.loc["over", "price"] == 100       # best price wins
+    assert d.loc["over", "books"] == 3                                               # sportsbooks only
+    assert d.loc["over", "p_fair"] == pytest.approx(0.5, abs=0.01)                   # fair unaffected by Kalshi's 0.9

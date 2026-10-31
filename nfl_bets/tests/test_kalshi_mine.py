@@ -50,3 +50,23 @@ def test_positions_net_and_settle():
     done = km.positions(fills, sett, sched, unit=10)[0]
     assert done["result"] == "W" and done["pnl_dollars"] == pytest.approx(10 - 6.44)
     assert done["pnl"] == pytest.approx((10 - 6.44) / 10, abs=0.01)
+
+
+def test_season_markets_filed_under_the_week_bought():
+    assert km.describe("KXNFLWINS-27LAR-8")[1:] == ("Kalshi season wins", "LAR 8+ wins", "LAR under 8 wins")
+    assert km.describe("KXNFLWINS-27JAC-10")[2] == "JAX 10+ wins"
+    assert km.describe("KXNFLPLAYOFF-27-CHI")[1:] == ("Kalshi playoffs", "CHI makes the playoffs", "CHI misses the playoffs")
+    sched = pd.DataFrame(dict(gameday=["2026-10-26", "2026-11-02"], week=[7, 8], away=["GB", "CHI"], home=["DET", "SEA"]))
+    fills = [
+        dict(ticker="KXNFLWINS-27LAR-8", outcome_side="no", count_fp="50.00", yes_price_dollars="0.8000",
+             no_price_dollars="0.2000", fee_cost="0.56", created_time="2026-10-28T21:00:00Z"),
+        dict(ticker="KXNFLPLAYOFF-27-CHI", outcome_side="no", count_fp="10.00", yes_price_dollars="0.7200",
+             no_price_dollars="0.2800", fee_cost="0.15", created_time="2026-10-29T12:00:00Z"),
+        dict(ticker="KXNFLWINS-ANY-27-17", outcome_side="yes", count_fp="1.00", yes_price_dollars="0.02"),   # league-wide: skipped
+    ]
+    rows = {r["ticker"]: r for r in km.positions(fills, [], sched, unit=10)}
+    assert set(rows) == {"KXNFLWINS-27LAR-8", "KXNFLPLAYOFF-27-CHI"}
+    lar = rows["KXNFLWINS-27LAR-8"]
+    assert (lar["week"], lar["game"], lar["side"], lar["result"]) == (8, "LAR (season)", "no", "open")
+    assert lar["bet"] == "LAR (season): LAR under 8 wins (Kalshi season wins)"
+    assert lar["cost_dollars"] == pytest.approx(10.56)

@@ -15,12 +15,15 @@ Setup (once; never put the key in the repo):
        export KALSHI_PRIVATE_KEY_PATH="$HOME/.kalshi/kalshi_key.pem"
        export MY_UNIT_DOLLARS="<what 1 unit is for you, e.g. 10>"
 
-This only ever sends GET requests (fills and settlements): it never places,
+This only ever sends GET requests (fills, settlements, and the current price of
+each open market): it never places,
 changes or cancels an order. Each NFL market you traded becomes one bet:
   stake  = what you paid, fees included, in units (MY_UNIT_DOLLARS)
   price  = your average price on the side you hold, in cents
   result = from Kalshi's settlement (Kalshi's own cost and payout), else open
-Positions are netted per market the way Kalshi does: buying NO and selling YES
+Season markets (KXNFLWINS "at least N wins", KXNFLPLAYOFF "makes the playoffs")
+are filed under the week of your first fill and stay open until they settle in
+January. Positions are netted per market the way Kalshi does: buying NO and selling YES
 are the same exposure. When this file exists, hq.py takes your Kalshi bets from
 it and ignores Kalshi rows ticked on the Analysis tab (no double counting).
 """
@@ -41,7 +44,8 @@ from common import DATA, SEASON, canon, nflverse
 
 API = os.environ.get("KALSHI_API_BASE", "https://api.elections.kalshi.com/trade-api/v2")
 OUT = os.path.join(DATA, "my_kalshi.json")
-NFL = ("KXNFLGAME", "KXNFLSPREAD", "KXNFLTOTAL")
+NFL = ("KXNFLGAME", "KXNFLSPREAD", "KXNFLTOTAL", "KXNFLWINS-", "KXNFLPLAYOFF-")
+SEASON_SERIES = ("KXNFLWINS", "KXNFLPLAYOFF")       # season-long: no game, settle in January
 TO_KALSHI = {"JAX": "JAC"}                        # Kalshi's abbreviations, where they differ
 
 
@@ -100,6 +104,12 @@ def _f(x, default=0.0):
 def describe(ticker):
     """'KXNFLSPREAD-26OCT25GBDET-DET7' -> (event code, kind, bet text for a YES holder, for a NO holder)."""
     series, code, suffix = ticker.split("-", 2)
+    if series == "KXNFLWINS":                       # KXNFLWINS-27LAR-8: at least 8 regular-season wins
+        team = canon(code.lstrip("0123456789"))
+        return code, "Kalshi season wins", f"{team} {suffix}+ wins", f"{team} under {suffix} wins"
+    if series == "KXNFLPLAYOFF":                    # KXNFLPLAYOFF-27-WAS
+        team = canon(suffix)
+        return code, "Kalshi playoffs", f"{team} makes the playoffs", f"{team} misses the playoffs"
     num = "".join(c for c in suffix if c.isdigit())
     team = canon(suffix.rstrip("0123456789"))
     if series == "KXNFLGAME":
@@ -130,12 +140,20 @@ def find_game(code, sched):
     return None, None
 
 
+def week_of(when, sched):
+    """The NFL week a fill falls in: the first week whose last game is on or after that day."""
+    day = (when or "")[:10]
+    ends = sched.groupby("week").gameday.max()
+    later = ends[ends >= day]
+    return int(later.index.min()) if len(later) else None
+
+
 def positions(fills, settlements, sched, unit):
     """One bet per NFL market: stake, price, result and P&L (dollars and units)."""
     held = defaultdict(lambda: dict(yes=0.0, no=0.0, cost_yes=0.0, cost_no=0.0, fees=0.0, first=None))
     for f in fills:
         t = f.get("ticker") or f.get("market_ticker")
-        if not t or not t.startswith(NFL):
+        if not t or not t.startswith(NFL) or t.startswith("KXNFLWINS-ANY"):   # league-wide "any team" markets
             continue
         side = f.get("outcome_side") or f.get("side")
         n = _f(f.get("count_fp") or f.get("count"))
@@ -151,7 +169,11 @@ def positions(fills, settlements, sched, unit):
     rows = []
     for t, p in held.items():
         code, kind, yes_text, no_text = describe(t)
-        week, game = find_game(code, sched)
+        if t.startswith(SEASON_SERIES):             # filed under the week you first bought it
+            team = (yes_text.split()[0])
+            week, game = week_of(p["first"], sched), f"{team} (season)"
+        else:
+            week, game = find_game(code, sched)
         side = "yes" if p["yes"] >= p["no"] else "no"
         count = p[side] - p["no" if side == "yes" else "yes"]          # net exposure
         s = settled.get(t)
@@ -173,6 +195,29 @@ def positions(fills, settlements, sched, unit):
     return sorted(rows, key=lambda r: r["first_fill"] or "")
 
 
+def mark(rows):
+    """Open bets at today's prices (public market data): what each would sell for now, after the fee."""
+    import kalshi
+    from common import kalshi_fee
+    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    for r in rows:
+        if r["result"] != "open" or not r["contracts"]:
+            continue
+        try:
+            m = kalshi._get(f"/markets/{r['ticker']}")["market"]
+        except RuntimeError:
+            continue
+        bid, ask = _f(m.get("yes_bid_dollars"), None), _f(m.get("yes_ask_dollars"), None)
+        if bid is None or ask is None:
+            continue
+        sell = bid if r["side"] == "yes" else 1 - ask             # you sell into the other side's best offer
+        mid = (bid + ask) / 2 if r["side"] == "yes" else 1 - (bid + ask) / 2
+        value = r["contracts"] * (sell - kalshi_fee(sell))
+        r.update(marked_at=now, market_p=round(mid, 3), sell_cents=round(sell * 100),
+                 value_dollars=round(value, 2), unrealized_dollars=round(value - r["cost_dollars"], 2))
+    return rows
+
+
 def main():
     unit = _f(os.environ.get("MY_UNIT_DOLLARS"), 0)
     if unit <= 0:
@@ -180,7 +225,7 @@ def main():
     key = _key()
     fills = every("/portfolio/fills", "fills", key)
     settlements = every("/portfolio/settlements", "settlements", key)
-    rows = positions(fills, settlements, season_schedule(), unit)
+    rows = mark(positions(fills, settlements, season_schedule(), unit))
     json.dump(rows, open(OUT, "w"), indent=1)
     nfl = [r for r in rows if r["week"]]
     done = [r for r in nfl if r["result"] != "open"]

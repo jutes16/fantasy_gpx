@@ -1,6 +1,9 @@
 """
-Copy the cloud snapshots (props, Sleeper projections, Kalshi) from the private
-data repo into this checkout. Run before grading or `props.py sheet <wk> --cached`.
+Copy the cloud snapshots (props, Sleeper projections, Kalshi, ELWAY) from the
+private data repo into this checkout. Run before grading or `props.py sheet <wk> --cached`.
+ELWAY: the week's files are taken when the cloud's pull is newer than the
+one here, and the bet sheets the cloud priced when ELWAY updated are logged
+(bets.py import_sheets).
 
     python3 sync_data.py
 
@@ -10,7 +13,9 @@ snapshots, which are merged with the cloud's rows winning (they were taken
 closest to kickoff).
 """
 
+import glob
 import os
+import re
 import shutil
 import subprocess
 
@@ -20,6 +25,36 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.environ.get("FANTASY_DATA_REPO", os.path.join(HERE, "..", "..", "fantasy_gpx-data"))
 PROPS = os.path.join(HERE, "..", "nfl_fantasy", "data", "props")
 KALSHI = os.path.join(HERE, "data", "kalshi")
+ELWAY = os.path.join(HERE, "data", "elway")
+POOL_ELWAY = os.path.join(HERE, "..", "nfl_model", "data", "elway")
+
+
+def _feed_time(path):
+    if not os.path.exists(path):
+        return ""
+    m = re.search(r"updated (\d{4}-\d\d-\d\dT[\d:.]+)", open(path).readline())
+    return m[1] if m else ""
+
+
+def copy_elway(src):
+    """The cloud's ELWAY week files where its pull is newer than ours, then its bet sheets."""
+    took = []
+    for a in glob.glob(os.path.join(src, "*_wk*.txt")):
+        f = os.path.basename(a)
+        b = os.path.join(ELWAY, f)
+        if open(a).read() == (open(b).read() if os.path.exists(b) else None) or _feed_time(a) <= _feed_time(b):
+            continue
+        os.makedirs(ELWAY, exist_ok=True)
+        shutil.copy2(a, b)
+        shutil.copy2(a, os.path.join(POOL_ELWAY, f))
+        d = os.path.join(src, "dist_" + f.replace(".txt", ".csv"))
+        if os.path.exists(d):
+            shutil.copy2(d, os.path.join(ELWAY, os.path.basename(d)))
+        took.append(f)
+    print(f"elway: {', '.join(sorted(took)) if took else 'nothing newer'}")
+    if os.path.isdir(os.path.join(src, "sheets")):
+        import bets
+        bets.import_sheets(os.path.join(src, "sheets"))
 
 
 def pull():
@@ -56,6 +91,8 @@ def main():
         if os.path.isdir(src):
             n, m = copy_tree(src, dst)
             print(f"{name}: {n} new file(s)" + (f", {m} Sleeper snapshot(s) merged" if m else ""))
+    if os.path.isdir(os.path.join(REPO, "elway")):
+        copy_elway(os.path.join(REPO, "elway"))
 
 
 if __name__ == "__main__":
