@@ -76,7 +76,7 @@ those stay with you.
 The steps that must happen before kickoff and need no one there run in GitHub
 Actions, in the private repo [fantasy_gpx-data](https://github.com/jutes16/fantasy_gpx-data),
 Thursday 4 pm ET (every game's player props and Sleeper's projections), Sunday
-10 am ET (fresh prices on the week's picks) and every 30 minutes on game days
+10 am ET (fresh prices on the week's picks) and every 10 minutes on game days
 (Kalshi snapshots; props for any game Thursday missed), plus ELWAY's feed every 4
 hours (the bet sheet priced whenever ELWAY changes).
 They're saved to the private repo; before grading or the props sheet, run
