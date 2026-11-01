@@ -9,10 +9,12 @@ this repo checked out beside it. Three modes:
   --recheck  Sunday 10 am ET: fresh prices on just this week's PICKs (only the
              picks' markets, only games not started: ~10-20 credits), saved to
              props/<season>_wk<NN>_recheck/ so the dashboard shows Sunday's line
-  (none)     every 30 min on game days: a Kalshi snapshot when a game kicks off
+  (none)     every 10 min on game days: a Kalshi snapshot when a game kicks off
              within WINDOW hours (the last one before kickoff is the close); and,
              as a safety net, props for any of those games Thursday missed
              (books post some late), with Sleeper's projections for their players
+--full and --recheck also do the (none) step: GitHub can hold a scheduled run back for
+hours (Thursday's 4 pm pull once ran at 7:56 pm, 20 minutes before TNF).
 
 About 100 credits a week of the free tier's 500 a month. Nothing is logged or
 graded here: locally, `python3 sync_data.py` copies the files in.
@@ -33,7 +35,7 @@ from common import SEASON, schedule
 from props import fp
 from weekly_stats import _normalize_name
 
-WINDOW = 2.5        # hours: with runs every 30 min, each game is bought 2-2.5 h before kickoff
+WINDOW = 2.5        # hours: runs every 10 min (when GitHub keeps them), so each game is bought ~2.5 h before kickoff
 
 
 def current_week():
@@ -119,5 +121,6 @@ if __name__ == "__main__":
         if wk is None:
             raise SystemExit("not the regular season")
         full(wk) if "--full" in a else recheck(wk)
+        main()                  # GitHub can hold a scheduled run back for hours: take the game-time snapshot too
     else:
         main(float(a[a.index("--window") + 1]) if "--window" in a else WINDOW)

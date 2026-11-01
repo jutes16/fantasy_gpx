@@ -325,7 +325,7 @@ pre-kickoff data doesn't depend on a laptop being awake:
   dashboard's Analysis tab can be built from Thursday evening.
 - **Sunday 10 am ET** (`--recheck`): fresh prices on just the week's picks
   (~10-20 credits), shown as "Sun 10 am" on the Analysis tab.
-- **Every 30 minutes on game days**: a Kalshi snapshot when a game kicks off
+- **Every 10 minutes on game days**: a Kalshi snapshot when a game kicks off
   within 2.5 hours (the last one before kickoff is the close), plus props for
   any game Thursday's pull missed.
 
