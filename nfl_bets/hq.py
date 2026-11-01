@@ -380,6 +380,54 @@ NFL_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nfl_
 CARDS = (("You", "your submitted picks"), ("Model", "pool.py's card"), ("Claude", "Claude's picks"))
 
 
+def pool_card():
+    """pool.py's card for the latest week in weekly_lines.xlsx: every game scored the way
+    `python3 pool.py <wk>` scores it (ELWAY tilt included), the top five = the recommended
+    picks, with ELWAY's lean and whether you've submitted the week."""
+    import sys
+    sys.path.insert(0, NFL_MODEL)
+    import pool
+    from sample_week import load_games
+    try:
+        games = load_games()
+    except ValueError:                              # the pool sheet isn't entered yet
+        return []
+    for g in games:
+        if g.get("elway_line") is not None:
+            g["proj_margin"] = -float(g["elway_line"])
+            g["proj_weight"] = pool.ELWAY_WEIGHT
+    res = pool.best_five(games)
+    week = int(pd.read_excel(os.path.join(NFL_MODEL, "data", "weekly_lines.xlsx")).week.max())
+    by_game = {f"{g['away']} @ {g['home']}": g for g in games}
+    log = pd.read_csv(os.path.join(NFL_MODEL, "data", "pool_picks_log.csv"))
+    sub = log[(log.season == SEASON) & (log.week == week) & (log.submitted.astype(str).str.lower() == "true")]
+    mine = dict(zip(sub.game, sub.sub_pick))
+    try:
+        sched = bets.schedule(SEASON, week, refresh=False)
+        kick = {f"{a} @ {h}": k for a, h, k in zip(sched.away, sched.home, sched.kickoff)}
+    except Exception:
+        kick = {}
+    now = pd.Timestamp.now(tz="UTC")
+    rows = []
+    for rank, r in enumerate(res["card"] + res["bench"], 1):
+        g = by_game[r["game"]]
+        el = g.get("elway_line")
+        if el is None or el == g["my_line"]:
+            lean, agrees = None, None
+        else:
+            side = "home" if el < g["my_line"] else "away"
+            lean = f"{g['home'] if side == 'home' else g['away']} {(g['my_line'] if side == 'home' else -g['my_line']):+g}"
+            agrees = side == r["side"]
+        ko = kick.get(r["game"])
+        rows.append(dict(id=f"{week}|{r['game']}", week=week, rank=rank, on_card=rank <= 5, game=r["game"], pick=r["pick"],
+                         tier=r["tier"], win_rate=r["win_rate"], pts_value=r["pts_value"], proj_adj=r["proj_adj"],
+                         pool_line=r["my_line"], mkt_line=r["mkt_line"], elway_line=_num(el, 1), elway_lean=lean,
+                         elway_agrees=agrees, kickoff=None if ko is None else pd.Timestamp(ko).isoformat(),
+                         started=bool(ko is not None and pd.Timestamp(ko) <= now), my_pick=mine.get(r["game"]),
+                         expected_wins=res["expected_wins"]))
+    return rows
+
+
 def pool_data():
     """The pool's three cards (pool_tracker.py's grading) and each team against the spread."""
     import contextlib
@@ -479,6 +527,7 @@ def main():
            "summary": summary, "props_week": props_week(week), "games_week": games_week(week),
            "season_week": season_week()}
     out["pool_picks"], out["pool_weekly"], out["pool_teams"], out["pool_field"] = pool_data()
+    out["pool_card"] = pool_card()
     stand = os.path.join(DATA, "pool_standings.json")      # your place in the pool, from its sheet (git-ignored)
     out["pool_standings"] = json.load(open(stand)) if os.path.exists(stand) else []
     os.makedirs(OUT, exist_ok=True)

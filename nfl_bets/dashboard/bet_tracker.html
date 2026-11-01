@@ -277,6 +277,25 @@
   </section>
   <!-- POOL -->
   <section class="bt-page" id="pool" role="tabpanel" aria-labelledby="tab-pool" hidden>
+    <article class="bt-card" id="pool-card">
+      <div>
+        <h2 id="pool-card-title">This week's recommended picks</h2>
+        <p class="bt-note" id="pool-card-note">—</p>
+      </div>
+      <div class="bt-scroll">
+        <table class="bt-table" id="pool-card-table" data-source="pool_card" data-row-key="id">
+          <thead><tr>
+            <th class="bt-r" data-field="rank">#</th><th data-field="pick">Pick</th><th class="bt-hide-narrow" data-field="game">Game</th>
+            <th class="bt-r" data-field="win_rate">Win rate</th><th class="bt-r" data-field="pts_value">Value</th><th data-field="tier">Tier</th>
+            <th class="bt-r bt-hide-narrow" data-field="mkt_line">Market</th><th data-field="elway_lean">ELWAY</th>
+            <th data-field="my_pick">Your pick</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="bt-note">pool.py's card, the same as <code>python3 pool.py &lt;wk&gt;</code>: every game ranked by its expected cover rate; ★ = the top five, the recommended picks. Value = points the pool's line is off the market on that side (the model's main edge); tier: EDGE = 1+ point, slim = ½+, coin flip = within ½. Market = the market's line (home perspective, negative = home favored) as of the last refresh. ELWAY = the side ELWAY's projection leans at the pool's line, flagged where it disagrees with a recommended pick (it nudges the win rate by at most 2 points). Claude's picks stay separate (made in another conversation).</p>
+    </article>
+
     <article class="bt-card" id="pool-me" data-source="pool_standings">
       <div>
         <h2 id="pool-me-title">My standing</h2>
@@ -930,6 +949,42 @@ window.btMine = (() => {
     if (!tbl._sort) tbl._sort = { key: 'ev_adj', dir: -1 };
     table(tbl, () => all.filter((r) => state.sall === 'all' || r.recommended), cells, (r) => r.id,
       (tr) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
+  };
+  dash.onData(draw);
+  window.bt.onChange(draw);
+})();
+</script>
+
+<script>
+// pool tab: this week's card from pool.py
+(() => {
+  const { state, table, el } = window.bt;
+  const tbl = document.getElementById('pool-card-table');
+  const title = document.getElementById('pool-card-title'), note = document.getElementById('pool-card-note');
+  const pick = (v, r) => { const s = el('span', r.on_card ? 'bt-pick-over' : null, (r.on_card ? '★ ' : '') + v); if (r.started) s.appendChild(el('span', 'bt-tag', 'started')); return s; };
+  const lean = (v, r) => { if (!v) return '—'; const s = el('span', null, v); if (r.on_card && r.elway_agrees === false) s.appendChild(el('span', 'bt-tag', 'DISAGREES')); return s; };
+  const line = (v) => (v == null ? '—' : d3.format('+g')(v).replace('-', '−'));
+  const cells = [['rank', String, 'bt-r'], ['pick', pick], ['game', String, 'bt-hide-narrow'],
+    ['win_rate', (v) => d3.format('.1%')(v), 'bt-r'], ['pts_value', (v) => d3.format('+.1f')(v).replace('-', '−'), 'bt-r'], ['tier', String],
+    ['mkt_line', line, 'bt-r bt-hide-narrow'], ['elway_lean', lean], ['my_pick', (v) => v || '—']];
+  const truthy = (v) => v === true || v === 'true' || v === 'True';
+  const draw = () => {
+    if (state.tab !== 'pool') return;
+    const d = dash.data('pool_card');
+    tbl.classList.toggle('dash-skeleton', d.status === 'loading');
+    const all = d.status === 'ok' ? d.data.map((r) => ({ ...r, rank: +r.rank, win_rate: +r.win_rate, pts_value: +r.pts_value, mkt_line: window.bt.num(r.mkt_line),
+      on_card: truthy(r.on_card), started: truthy(r.started), elway_agrees: r.elway_agrees == null || r.elway_agrees === '' ? null : truthy(r.elway_agrees) })) : [];
+    if (all.length) {
+      const card = all.filter((r) => r.on_card), sub = all.filter((r) => r.my_pick);
+      title.textContent = `Week ${all[0].week}: recommended picks`;
+      note.textContent = `${card.map((r) => r.pick).join(', ')}: about ${d3.format('.2f')(+all[0].expected_wins)} expected wins (2.5 = a coin flip). `
+        + (sub.length ? `You submitted ${sub.length} picks.` : 'Not submitted yet: picks lock at the first Sunday kickoff.');
+    } else {
+      title.textContent = "This week's recommended picks";
+      note.textContent = d.status === 'ok' ? "The pool's sheet for this week isn't entered yet." : '—';
+    }
+    if (!tbl._sort) tbl._sort = { key: 'rank', dir: 1 };
+    table(tbl, () => all, cells, (r) => r.id, (tr, r) => tr.classList.toggle('bt-marked', r.on_card));
   };
   dash.onData(draw);
   window.bt.onChange(draw);
