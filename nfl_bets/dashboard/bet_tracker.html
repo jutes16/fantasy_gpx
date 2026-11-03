@@ -694,10 +694,10 @@ window.bt = (() => {
 
 <script>
 // "Refresh my Kalshi bets": kalshi_mcp.py on your Mac (a local MCP server, Claude desktop app only) runs
-// kalshi_mine.py + hq.py and returns the bets, timeline and summary; the page saves them as this dashboard's data
+// kalshi_mine.py + hq.py (with your ticks from this dashboard) and returns the datasets they feed; the page saves them
 (() => {
   const btn = document.getElementById('k-refresh'), note = document.getElementById('k-refresh-note');
-  const SERVER = 'host:kalshi_hq', SETS = ['bets', 'timeline', 'summary'];
+  const SERVER = 'host:kalshi_hq', SETS = ['bets', 'timeline', 'summary', 'games_week', 'season_week'];
   const say = (t, err) => { note.hidden = !t; note.textContent = t || ''; note.classList.toggle('bt-err', !!err); };
   const WHY = {
     server_not_connected: 'The refresh runs on your Mac: open this dashboard in the Claude desktop app, with the kalshi_hq helper added (see nfl_bets/kalshi_mcp.py).',
@@ -723,7 +723,7 @@ window.bt = (() => {
       if (st === 'prompt') st = (await perms.request([scope]).catch(() => ({})))[scope] || st;
       if (st === 'denied') { say('The helper is turned off for this dashboard: switch it back on in the dashboard\'s Permissions menu.', true); btn.disabled = false; return; }
       say('Pulling your Kalshi bets on your Mac (read-only)…');
-      out = (await mcp.callTool(SERVER, 'refresh_my_kalshi', {})).payload;
+      out = (await mcp.callTool(SERVER, 'refresh_my_kalshi', { ticks: window.btMine.ticks() })).payload;
       if (!out || !Array.isArray(out.bets)) throw { code: 'bad_answer' };
     } catch (e) {
       say(e.code === 'tool_error' ? `The pull failed on your Mac: ${(e.message || '').slice(0, 300)}` : (WHY[e.code] || `Refresh didn't run (${e.code || 'error'}).`), true);
@@ -734,7 +734,7 @@ window.bt = (() => {
       for (const id of SETS) {
         const ref = db.doc('datasets/' + id);
         const old = (await ref.get()).data();
-        if (!old || !old.source) continue;
+        if (!old || !old.source || !out[id]) continue;
         const up = await assets.upload(new Blob([JSON.stringify(out[id])], { type: 'application/json' }));
         await ref.update({ source: { ...old.source, url: '/_blob/' + up.id }, updated: { at: out.at, by: 'Refresh button (kalshi_mcp.py)' } });
         const was = String(old.source.url || '').match(/_blob\/([0-9a-f]{32})/);
@@ -786,6 +786,7 @@ window.btMine = (() => {
   };
   // a Bet tick + stake box placed at the start of a row's first cell
   const control = (kind, row, label) => {
+    if (row.held) return heldControl(row, label);
     const m = marks.get(key(kind, row));
     const wrap = document.createElement('span'); wrap.className = 'bt-mark';
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!m;
@@ -805,8 +806,32 @@ window.btMine = (() => {
     wrap.append(cb, st, pr);
     return { wrap, marked: !!m };
   };
+  // a bet you hold on Kalshi (row.held, from kalshi_mine.py via hq.py): ticked at your units and price, read-only
+  const heldControl = (row, label) => {
+    const h = row.held;
+    const wrap = document.createElement('span'); wrap.className = 'bt-mark';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.disabled = true;
+    cb.setAttribute('aria-label', `On Kalshi: ${label}`);
+    const st = document.createElement('input'); st.type = 'number'; st.value = h.stake; st.readOnly = true; st.setAttribute('aria-label', 'Your stake in units');
+    const pr = document.createElement('input'); pr.type = 'text'; pr.value = h.price_cents == null ? '' : `${h.price_cents}¢`; pr.readOnly = true;
+    pr.setAttribute('aria-label', 'Your average Kalshi price');
+    wrap.title = `On Kalshi${h.on ? ' (this sheet lists it at the books)' : ''}: ${h.contracts} contracts at ${h.price_cents}¢ avg, $${h.cost_dollars} with fees. From your Kalshi account, not a tick.`;
+    wrap.append(cb, st, pr);
+    return { wrap, marked: true };
+  };
+  // EV with, for a bet you hold, the EV at your price underneath
+  const evCell = (v, r) => {
+    const main = window.bt.evCell(v);
+    if (!r.held || r.held.ev == null) return main;
+    const b = document.createElement('div'); b.className = 'bt-player';
+    const a = document.createElement('span'); a.textContent = main;
+    const s = document.createElement('span'); s.className = 'bt-sub'; s.textContent = `yours ${window.bt.evCell(r.held.ev)}`;
+    b.append(a, s);
+    return b;
+  };
   const count = (week) => [...marks.values()].filter((v) => +v.week === +week);
-  return { onChange: (f) => listeners.push(f), control, count, status: () => (failed ? 'failed' : ready ? 'ready' : 'loading') };
+  const ticks = () => [...marks.values()];
+  return { onChange: (f) => listeners.push(f), control, count, ticks, evCell, status: () => (failed ? 'failed' : ready ? 'ready' : 'loading') };
 })();
 </script>
 
@@ -871,11 +896,13 @@ window.btMine = (() => {
     if (market.options.length !== kinds.length + 1) market.replaceChildren(new Option('All props', ''), ...kinds.map((k) => new Option(k, k)));
     if (!tbl._sort) tbl._sort = { key: 'rating', dir: -1 };
     table(tbl, shown, cells, (r) => r.id, (tr, r) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
-    const gw = dash.data('games_week');
+    const gw = dash.data('games_week'), sw = dash.data('season_week');
     const wk = all.length ? all[0].week : (gw.status === 'ok' && gw.data.length ? gw.data[0].week : null), mine = wk == null ? [] : window.btMine.count(wk);
+    const held = [gw, sw].flatMap((ds) => (ds.status === 'ok' ? ds.data.filter((r) => r.held && +r.week === +wk) : [])).map((r) => r.held);
     const st = window.btMine.status();
+    const k = held.length ? ` Your Kalshi account adds ${held.length} more on these sheets (${d3.format('.2~f')(d3.sum(held, (h) => +h.stake || 0))}u).` : '';
     document.getElementById('mine-count').textContent = st === 'failed' ? 'Saving bets isn\'t available in this view.'
-      : st === 'loading' ? '' : `You've marked ${mine.length} bet${mine.length === 1 ? '' : 's'} this week (${d3.sum(mine, (m) => +m.stake || 0)}u).`;
+      : st === 'loading' ? '' : `You've marked ${mine.length} bet${mine.length === 1 ? '' : 's'} this week (${d3.format('.2~f')(d3.sum(mine, (m) => +m.stake || 0))}u).${k}`;
   };
   dash.onData(draw);
   window.bt.onChange(draw);
@@ -894,7 +921,7 @@ window.btMine = (() => {
   const gameCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('game', r, `${r.game}: ${r.bet} (${r.type_name})`).wrap, document.createTextNode(v)); return s; };
   const cells = [['game', gameCell], ['bet', bet], ['price', window.bt.priceCell, 'bt-r'],
     ['venue', (v, r) => v || (r.where && r.where.startsWith('KX') ? 'Kalshi' : 'Sportsbook')],
-    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev', window.bt.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'],
+    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev', window.btMine.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'],
     ['kickoff', kick, 'bt-hide-narrow'], ['type_name', String, 'bt-hide-narrow']];
   const draw = () => {
     const d = dash.data('games_week');
@@ -931,7 +958,7 @@ window.btMine = (() => {
     : `${d3.format('.0f')(r.po_loss)}% · ${d3.format('.0f')(v)}% · ${d3.format('.0f')(r.po_win)}%`);
   const teamCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('season', r, `${r.bet} (season)`).wrap, document.createTextNode(v)); return s; };
   const cells = [['team', teamCell], ['bet', bet], ['price', (v) => window.bt.priceCell(`${v}¢`), 'bt-r'], ['venue', (v) => v || 'Kalshi'],
-    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev_adj', window.bt.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'], ['ev', window.bt.evCell, 'bt-r bt-hide-narrow'], ['elway_wins', (v) => (v == null ? '—' : d3.format('.1f')(v)), 'bt-r bt-hide-narrow'],
+    ['elway_p', window.bt.pctCell, 'bt-r'], ['ev_adj', window.btMine.evCell, 'bt-r'], ['stake_scaled', window.bt.stakeCell, 'bt-r'], ['ev', window.bt.evCell, 'bt-r bt-hide-narrow'], ['elway_wins', (v) => (v == null ? '—' : d3.format('.1f')(v)), 'bt-r bt-hide-narrow'],
     ['kalshi_wins', (v) => (v == null ? '—' : d3.format('.1f')(v)), 'bt-r bt-hide-narrow'], ['po_now', swing, 'bt-c bt-hide-narrow'],
     ['volume', (v) => (v == null ? '—' : d3.format(',')(v)), 'bt-r bt-hide-narrow']];
   const num = window.bt.num;
