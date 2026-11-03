@@ -7,7 +7,10 @@ server's one tool, which runs on your Mac:
     python3 kalshi_mine.py     # your Kalshi bets, read-only GETs (the key never leaves your Mac)
     python3 hq.py              # the dashboard's data
 
-and hands back the datasets your Kalshi bets feed (bets, timeline, summary). The
+and hands back the datasets your Kalshi bets feed (bets, timeline, summary, and
+the game and season sheets, where your Kalshi bets show ticked). The button also
+sends the dashboard's Bet ticks (props, book bets), saved first as
+data/my_bets.json so they reach "My bets" too. The
 page then saves them to the dashboard itself. Setup (once):
 
     claude mcp add --scope user kalshi_hq -- \\
@@ -28,17 +31,24 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYTHON = sys.executable
 OUT = os.path.join(HERE, "data", "dashboard_hq")
-DATASETS = ("bets", "timeline", "summary")          # what your Kalshi bets change
+DATASETS = ("bets", "timeline", "summary", "games_week", "season_week")   # what your Kalshi bets and ticks change
 TOOL = {
     "name": "refresh_my_kalshi",
-    "description": "Pull your Kalshi NFL bets (read-only) and rebuild the Bet Tracker's bets, timeline and summary.",
-    "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    "description": "Pull your Kalshi NFL bets (read-only), save the dashboard's Bet ticks, and rebuild the Bet Tracker's data.",
+    "inputSchema": {"type": "object", "additionalProperties": False, "properties": {
+        "ticks": {"type": "array", "items": {"type": "object"}, "description": "The dashboard's mybets documents"}}},
     "annotations": {"title": "Refresh my Kalshi bets", "readOnlyHint": False, "idempotentHint": True,
                     "openWorldHint": True, "destructiveHint": False},
 }
 
 
-def refresh():
+def refresh(ticks=None):
+    if ticks is not None:                             # the dashboard's ticks -> data/my_bets.json (hq.save_ticks)
+        sys.path.insert(0, HERE)
+        import contextlib
+        import hq
+        with contextlib.redirect_stdout(sys.stderr):  # stdout is the MCP channel
+            hq.save_ticks(ticks)
     cmd = f'cd "{HERE}" && "{PYTHON}" kalshi_mine.py && "{PYTHON}" hq.py'
     run = subprocess.run(["/bin/zsh", "-lic", cmd], capture_output=True, text=True, timeout=300)
     log = (run.stdout + run.stderr).strip().splitlines()
@@ -71,7 +81,7 @@ def handle(msg):
             reply(id_, error={"code": -32602, "message": "unknown tool"})
             return
         try:
-            out = refresh()
+            out = refresh(msg["params"].get("arguments", {}).get("ticks"))
             reply(id_, {"content": [{"type": "text", "text": json.dumps(out, default=str)}], "structuredContent": out})
         except Exception as e:                        # the scripts' own message, e.g. a missing key
             reply(id_, {"content": [{"type": "text", "text": str(e)}], "isError": True})

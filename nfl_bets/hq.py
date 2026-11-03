@@ -125,7 +125,11 @@ def import_ticks(folder):
     """The dashboard's mybets documents (saved as JSON files, one per doc, by
     Claude's ArtifactData list) -> data/my_bets.json."""
     import glob
-    docs = [json.load(open(f)) for f in glob.glob(os.path.join(folder, "*.json"))]
+    save_ticks([json.load(open(f)) for f in glob.glob(os.path.join(folder, "*.json"))])
+
+
+def save_ticks(docs):
+    """The dashboard's mybets documents -> data/my_bets.json."""
     keep = ("id", "kind", "week", "stake", "price_taken", "label", "price", "book", "game", "at")
     ticks = [{k: d.get("data", d).get(k) for k in keep} for d in docs]
     json.dump(sorted(ticks, key=lambda t: t["at"] or ""), open(MY_BETS, "w"), indent=1)
@@ -195,6 +199,22 @@ def my_bets():
                              unrealized_dollars=k.get("unrealized_dollars"), marked_at=k.get("marked_at"),
                              elway_p=elway_season_p(k)))
     return rows
+
+
+def _held():
+    """Your Kalshi positions (kalshi_mine.py) by (ticker, side), to tick on the Analysis tab's sheets."""
+    if not os.path.exists(KALSHI_MINE):
+        return {}
+    return {(k["ticker"], k["side"]): k for k in json.load(open(KALSHI_MINE)) if k.get("week")}
+
+
+def _held_info(k, p):
+    """What the sheet shows for a bet you hold: your contracts, price, units and EV at your price (fee included)."""
+    ev = None
+    if p is not None and k.get("price_cents"):
+        ev = _num(p / buy_yes(k["price_cents"] / 100) - 1)
+    return dict(contracts=k["contracts"], price_cents=k["price_cents"], stake=k["stake"],
+                cost_dollars=k.get("cost_dollars"), result=k["result"], ev=ev)
 
 
 _SEASON_FEED = {}
@@ -355,7 +375,24 @@ def games_week(week):
                          venue="Kalshi" if str(x.instrument).startswith("kalshi") or x.instrument == "pair" else "Sportsbook",
                          elway_p=_num(x.p), cost=_num(x.cost), ev=_num(x.ev),
                          stake_scaled=round(float(bets.scaled_stake(x.ev)), 2),
-                         recommended=str(x.recommended).lower() == "true", phi="PHI" in (x.away, x.home)))
+                         recommended=str(x.recommended).lower() == "true", phi="PHI" in (x.away, x.home),
+                         team=x.team, side=x.side, held=None))
+    held, used = _held(), set()
+    for r in rows:                                  # your Kalshi bets on the sheet's own markets
+        k = held.get((r["where"], r["side"]))
+        if k and r["venue"] == "Kalshi":
+            r["held"] = _held_info(k, r["elway_p"])
+            used.add((k["ticker"], k["side"]))
+    for (t, side), k in held.items():               # a Kalshi win bet the sheet lists only at the books
+        if (t, side) in used or k["week"] != week or not t.startswith("KXNFLGAME") or side != "yes":
+            continue
+        team = canon(t.rsplit("-", 1)[1])
+        for r in rows:
+            if r["type"] == "book_ml" and r["game"] == k["game"] and canon(r["team"]) == team and not r["held"]:
+                r["held"] = dict(_held_info(k, r["elway_p"]), on="Kalshi")
+                break
+    for r in rows:
+        del r["team"], r["side"]
     return rows
 
 
@@ -365,7 +402,8 @@ def season_week():
         return []
     log = pd.read_csv(season.LOG)
     log = log[(log.season == SEASON) & (log.batch == log.batch.max())]
-    return [dict(id=f"{x.team}|{x.ticker}|{x.side}", week=int(x.week), as_of=x.logged_at, elway_as_of=x.elway_updated,
+    held = _held()
+    return [dict(held=_held_info(held[(x.ticker, x.side)], _num(x.p)) if (x.ticker, x.side) in held else None,id=f"{x.team}|{x.ticker}|{x.side}", week=int(x.week), as_of=x.logged_at, elway_as_of=x.elway_updated,
                  team=x.team, kind=x.kind, bet=x.bet, ticker=x.ticker, venue="Kalshi", price=round(float(x.price) * 100),
                  elway_p=_num(x.p), kalshi_p=_num(x.mid), ev=_num(x.ev), ev_adj=_num(x.ev_adj),
                  elway_wins=_num(x.elway_wins, 1), kalshi_wins=_num(x.kalshi_wins, 1),
