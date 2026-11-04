@@ -503,9 +503,9 @@ nflverse data, each scored separately so you can see what it adds:
   enters as a fixed term plus an early-season term that fades by about
   week 5. It starts in 2013 because snap counts start in 2012.
 
-**Fit on even seasons, test on odd ones.** Every hyperparameter and the
-calibration are fitted on even seasons only, scored on margin accuracy and
-never on ATS results. Odd seasons are the out-of-sample test. Alternating
+**Fit on even seasons, test on odd ones.** The tuned hyperparameters, the
+calibration, the drive adjustments and the draft-slot priors are fitted on
+even seasons only, scored on margin accuracy and never on ATS results. Odd seasons are the out-of-sample test. Alternating
 years keeps every era of the league on both sides of the split. Ratings for
 any game still come only from games played before it.
 
@@ -521,7 +521,7 @@ Mean absolute error, regular season, odd (out-of-sample) seasons:
 
 | layers | margin 2003–25 | margin 2013–25 | wk 1–4, 2013–25 | total 2013–25 |
 |---|---|---|---|---|
-| team | 10.59 | 10.42 | 10.58 | 10.99 |
+| team | 10.59 | 10.42 | 10.57 | 10.99 |
 | + QB | 10.52 | 10.32 | 10.53 | 10.92 |
 | + roster | – | 10.31 | 10.52 | 10.91 |
 | closing line | 10.29 | 10.10 | 10.30 | 10.72 |
@@ -531,9 +531,9 @@ Mean absolute error, regular season, odd (out-of-sample) seasons:
   biggest line moves. Its fitted weight is 0.73 points per point of
   QB-adjusted EPA.
 - **The roster layer adds almost nothing.** It lowers error by 0.004 overall
-  and 0.012 in weeks 1–4. Its weights are positive (0.24, plus 0.40 early).
+  and 0.011 in weeks 1–4. Its weights are positive (0.24, plus 0.39 early).
   Last season's team ratings already carry most of what a roster sum knows.
-- **The full model is still 0.22 points behind the close** and goes 895-894
+- **The full model is still 0.22 points behind the close** and goes 899-890
   ATS. Regressing results on close + (model − close) gives the model a
   weight of +0.18 (t = 1.4). That's the first positive estimate in this
   repo, but it isn't significant, and mixing it into the close doesn't
@@ -542,7 +542,7 @@ Mean absolute error, regular season, odd (out-of-sample) seasons:
   games both cover: margin-only ratings trail the close by 0.52, the full
   model by 0.20.
 - **2026 weeks 3–8** (88 games): margin MAE close 8.66, ELWAY 8.73,
-  ELWAY-lite 8.83. ELWAY-lite and ELWAY correlate 0.90.
+  ELWAY-lite 8.83. ELWAY-lite and ELWAY correlate about 0.9.
 - **Things that added nothing:** first downs and yards per play over points
   per drive, and adjusting for starting field position (±0.01 each).
 

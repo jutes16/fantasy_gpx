@@ -17,7 +17,8 @@ Scoring events (a touchdown counts 7, ignoring the conversion, which is noise):
     def   interception/fumble return TDs; safeties (2 to the defense)
     st    kickoff and punt return TDs, blocked kick returns
 
-Per drive, two adjustments are recorded (both fitted league-wide):
+Per drive, two adjustments are recorded (both fitted league-wide, on even
+completed seasons only, so odd test seasons stay out of sample):
     script_adj   points a drive "should" lose or gain from the score and
                  clock, e.g. a team up 14 in the 4th quarter runs, not scores
     ep_start     expected points from the starting field position
@@ -42,6 +43,7 @@ FTN_URL = RELEASES + "/ftn_charting/ftn_charting_{y}.csv"   # drops, sneaks: 202
 
 RUMP_SECS = 120      # drives starting with < 2:00 in the half are "rump"
 TD_PTS = 7
+LAST_FIT = 2024      # last even season the drive adjustments are fitted on
 SCRIMMAGE = {"pass", "run", "qb_kneel", "qb_spike", "no_play",
              "punt", "field_goal"}
 
@@ -136,7 +138,8 @@ def season_drives(y):
 
 def script_and_field(d):
     """League-wide drive adjustments for score/clock and starting field position."""
-    eff = d[~d.rump & ~d.kneel_only]
+    use = ~d.rump & ~d.kneel_only & (d.season % 2 == 0) & (d.season <= LAST_FIT)
+    eff = d[use]
     # starting field position: expected points by 5-yard bin of yardline_100
     yl = (d.start_yl.clip(1, 99) // 5) * 5
     ep = eff.groupby((eff.start_yl.clip(1, 99) // 5) * 5).off_pts.mean()
@@ -149,8 +152,7 @@ def script_and_field(d):
     q4 = d.start_qtr >= 4
     bucket = np.where(late, lead.astype(str) + np.where(q4, "|q4", "|q3"), "1st")
     resid = d.off_pts - d.ep_start
-    adj = resid[~d.rump & ~d.kneel_only].groupby(
-        bucket[~d.rump & ~d.kneel_only]).mean()
+    adj = resid[use].groupby(bucket[use]).mean()
     adj = adj - adj.get("1st", 0.0)
     d["script_adj"] = pd.Series(bucket, index=d.index).map(adj).fillna(0.0)
     return d, adj
