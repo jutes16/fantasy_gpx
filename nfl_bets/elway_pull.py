@@ -57,8 +57,8 @@ def build(games, margins, week=None):
     """The week's table rows and distribution from the feed's two files.
     week=None: the week whose games the margins cover."""
     games = games.assign(home=games.home_sb_fran_id.map(canon), away=games.away_sb_fran_id.map(canon))
-    m = margins.assign(away=margins.matchup.str.split(" @ ").str[0].map(canon),
-                       home=margins.matchup.str.split(" @ ").str[1].map(canon))
+    teams = margins.matchup.str.split(r" (?:@|v) ", regex=True)    # "CIN v ATL" at a neutral site
+    m = margins.assign(away=teams.str[0].map(canon), home=teams.str[1].map(canon))
     pairs = set(zip(m.away, m.home))
     on = games[[(a, h) in pairs for a, h in zip(games.away, games.home)]]
     if on.empty:
@@ -76,13 +76,17 @@ def build(games, margins, week=None):
 
 
 def _spread(x):
+    """The feed's point_spread: a number, or "Pick" for a pick'em."""
+    if str(x).strip().lower() in ("pick", "pk", "even"):
+        return "PK"
+    x = float(x)
     return "PK" if x == 0 else f"{x:+g}"
 
 
 def table_lines(g):
     return [f"{int(r.week)} {'N ' if str(r.neutral).lower() in ('yes', 'true', '1') else ''}"
             f"{r.home} {r.pf_home:.1f} {r.win_home:.2f}% {r.away} {r.pf_away:.1f} {r.win_away:.2f}% "
-            f"{_spread(float(r.point_spread))} {float(r.total):g}" for r in g.itertuples()]
+            f"{_spread(r.point_spread)} {float(r.total):g}" for r in g.itertuples()]
 
 
 def _key(line):
