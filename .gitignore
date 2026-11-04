@@ -43,3 +43,6 @@ nfl_fantasy/data/usage/
 
 # The pool field: other entrants' names and picks (private; stays on this Mac)
 nfl_model/data/pool_field_picks.csv
+
+# nflverse play-by-play (433 MB; re-fetch with drives.py fetch)
+nfl_model/data/pbp/
