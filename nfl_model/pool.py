@@ -70,21 +70,29 @@ def score_game(g: dict) -> dict:
 
     v_home = my - mkt          # value if you take the home side
     v_away = mkt - my          # value if you take the away side
-    side = "home" if v_home >= v_away else "away"
-    raw = max(v_home, v_away)
-
     mult = band_multiplier(mkt)
-    eff = raw * mult
-    rate = _interp(eff)
-    base_rate = rate
-
-    # Optional projection tilt. Capped hard: projections are NOT
-    # validated by the backtest, and pass a credibility weight in
-    # proj_weight (a source running 44% ATS should get ~0).
     pm, pw = g.get("proj_margin"), g.get("proj_weight", 0.0)
-    if pm is not None and pw:
-        pcov = (pm + my) if side == "home" else (-pm - my)
-        rate += float(np.clip(pcov * 0.004 * pw, -0.02, 0.02))
+
+    def rate_for(side):
+        raw = v_home if side == "home" else v_away
+        eff = raw * mult
+        base = _interp(eff)
+        rate = base
+        # Optional projection tilt. Capped hard: projections are NOT
+        # validated by the backtest, and pass a credibility weight in
+        # proj_weight (a source running 44% ATS should get ~0).
+        if pm is not None and pw:
+            pcov = (pm + my) if side == "home" else (-pm - my)
+            rate += float(np.clip(pcov * 0.004 * pw, -0.02, 0.02))
+        return rate, base, raw, eff
+
+    # take whichever side covers more often (value first; the projection tilt
+    # decides a game where the pool's line equals the market's), so >= 50%
+    side = "home" if v_home >= v_away else "away"
+    rate, base_rate, raw, eff = rate_for(side)
+    if rate < 0.5:
+        side = "away" if side == "home" else "home"
+        rate, base_rate, raw, eff = rate_for(side)
 
     proj_adj = rate - base_rate
     rate = float(np.clip(rate, 0.30, 0.70))

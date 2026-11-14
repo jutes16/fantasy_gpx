@@ -147,6 +147,10 @@ Just the signal tables:
 | `rule_compare.py` | Selection-rule comparison and submission-time sensitivity. |
 | `lock_timing.py` | What the pool's lock rule costs. |
 | `power_rating_test.py` | Why a projection model is not worth building. |
+| `drives.py` | nflverse play-by-play → one row per team per game on a points-per-drive basis (`data/drives.csv`). |
+| `qbert.py` | QBERT-lite QB ratings from play-by-play (`data/qb_games.csv`); `top` lists current ratings. |
+| `roster.py` | AV-style player values and Week 1 roster ratings (`data/player_av.csv`, `data/roster_ratings.csv`). |
+| `elway_lite.py` | Team + QB + roster model in the style of ELWAY, fit on even seasons and tested on odd; 2026 vs ELWAY; this week's lines. |
 | `model.py` | Original −110 betting version (has a vig hurdle; `pool.py` does not). |
 
 ### Data files
@@ -476,6 +480,76 @@ raise it only if the report's `gap 1+` row holds up over many weeks.
 
 A projection model's disagreements tend to be underdogs (10 of ELWAY's 13
 in Week 3), so watch whether it simply tracks underdog years.
+
+## ELWAY-lite: a rebuild of ELWAY's core (no edge at the close)
+
+`elway_lite.py` rebuilds the main layers of ELWAY's 2026 method from free
+nflverse data, each scored separately so you can see what it adds:
+
+- **Team** (`drives.py`): offensive points per drive (adjusted for score and
+  clock, rump drives at the end of a half left out), first downs per drive,
+  yards per play, pace, and a heavily shrunk defensive/return-scoring term.
+  Each is opponent-adjusted and refitted every week from games already played.
+- **QB** (`qbert.py`, QBERT-lite): EPA per QB play. Drops are credited as
+  catches (FTN, 2022 on), defensive pass interference counts as the QB's play,
+  sneaks are left out, and interception rate is regressed toward the league
+  rate. QBs with little history start from a draft-slot prior. The
+  adjustment is the projected starter's rating minus the rating of the QBs
+  the team's numbers were earned with.
+- **Roster** (`roster.py`, AV-style): each unit's points above replacement
+  is split by position, then by snaps, as Approximate Value does; QBs are
+  left to the QB layer. Week 1 rosters are valued on the last three
+  seasons with position-specific aging, and rookies by draft slot. This
+  enters as a fixed term plus an early-season term that fades by about
+  week 5. It starts in 2013 because snap counts start in 2012.
+
+**Fit on even seasons, test on odd ones.** The tuned hyperparameters, the
+calibration, the drive adjustments and the draft-slot priors are fitted on
+even seasons only, scored on margin accuracy and never on ATS results. Odd seasons are the out-of-sample test. Alternating
+years keeps every era of the league on both sides of the split. Ratings for
+any game still come only from games played before it.
+
+```
+python3 drives.py fetch 2026 && python3 drives.py build   # weekly refresh
+python3 qbert.py build
+python3 elway_lite.py --refresh                           # backtest + this week
+python3 roster.py fetch 2026 && python3 roster.py build   # once, after Week 1
+python3 qbert.py top                                      # current QB ratings
+```
+
+Mean absolute error, regular season, odd (out-of-sample) seasons:
+
+| layers | margin 2003–25 | margin 2013–25 | wk 1–4, 2013–25 | total 2013–25 |
+|---|---|---|---|---|
+| team | 10.59 | 10.42 | 10.57 | 10.99 |
+| + QB | 10.52 | 10.32 | 10.53 | 10.92 |
+| + roster | – | 10.31 | 10.52 | 10.91 |
+| closing line | 10.29 | 10.10 | 10.30 | 10.72 |
+
+- **The QB layer helps most.** It closes about a third of the gap to the
+  close, which is in line with ELWAY's own view that QBs drive the
+  biggest line moves. Its fitted weight is 0.73 points per point of
+  QB-adjusted EPA.
+- **The roster layer adds almost nothing.** It lowers error by 0.004 overall
+  and 0.011 in weeks 1–4. Its weights are positive (0.24, plus 0.39 early).
+  Last season's team ratings already carry most of what a roster sum knows.
+- **The full model is still 0.22 points behind the close** and goes 899-890
+  ATS. Regressing results on close + (model − close) gives the model a
+  weight of +0.18 (t = 1.4). That's the first positive estimate in this
+  repo, but it isn't significant, and mixing it into the close doesn't
+  lower error.
+- **Against the old test** (`power_rating_test.py`), on the 1,257 odd-season
+  games both cover: margin-only ratings trail the close by 0.52, the full
+  model by 0.20.
+- **2026 weeks 3–8** (88 games): margin MAE close 8.66, ELWAY 8.73,
+  ELWAY-lite 8.83. ELWAY-lite and ELWAY correlate about 0.9.
+- **Things that added nothing:** first downs and yards per play over points
+  per drive, and adjusting for starting field position (±0.01 each).
+
+The weekly output lists each game's projected starters (from nflverse) and
+the QB adjustment. Check them against the news: a wrong starter is the
+biggest error this model can make. Not modelled: injuries, weather,
+travel, rest and coaching changes.
 
 ## Market signals (splits and sharp money)
 
