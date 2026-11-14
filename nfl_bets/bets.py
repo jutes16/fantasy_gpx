@@ -299,9 +299,19 @@ def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False, exp
             flag = "*" if b.ev >= min_ev else " "
             print(f"   {flag} {b.game:<12}{describe(b):<34} ELWAY {b.p:5.1%}  EV {b.ev:+.3f}")
 
+    # injury check: a bet backing a side whose QB is out, or that is missing 2+ more
+    # starters than its opponent, isn't recommended (ELWAY's Tuesday numbers miss
+    # injuries the market has priced; see injuries.py)
+    best = _injury_flags(best, week)
+    hit = best[best.inj_flag & (best.ev >= min_ev) & (best.instrument != "pair")]
+    if len(hit):
+        print(f"\nINJURY CHECK: {len(hit)} bet(s) at EV >= {min_ev:.2f} back an injured side -- not recommended")
+        for b in hit.drop_duplicates(["game", "team", "side"]).itertuples():
+            print(f"   {b.game:<12}{describe(b):<34} {b.inj_note}")
+
     # one recommendation per game: the best EV across instruments (pairs excluded:
     # they are a relative-value test, not a directional bet)
-    direct = best[best.instrument != "pair"]
+    direct = best[(best.instrument != "pair") & ~best.inj_flag]
     rec = direct.sort_values("ev", ascending=False).groupby("game").head(1)
     rec = rec[rec.ev >= min_ev].sort_values("ev", ascending=False)
     print("\n" + "-" * 92)
@@ -321,6 +331,16 @@ def sheet(week, min_ev=0.05, fetch=True, log=True, force=False, books=False, exp
         print(f"\nexported {len(flagged)} bets for week {week} -> {export}")
     elif log:
         write_log(flagged, week, now, force=force)
+
+
+def _injury_flags(best, week):
+    """inj_flag / inj_note on each bet; no flags (with a note) if the report can't be read."""
+    import injuries
+    try:
+        return injuries.flag_bets(best, week)
+    except Exception as e:                       # offline or nflverse down: don't block the sheet
+        print(f"\n  injury check skipped ({type(e).__name__}: {e})")
+        return best.assign(inj_flag=False, inj_note="")
 
 
 def elway_fingerprint(week):
@@ -492,6 +512,20 @@ EV_REF = 0.15
 STAKE_CAP = (0.5, 2.0)
 
 
+def _report_injury_flags(d):
+    """The injury check applied to graded bets, week by week (None if the report can't be read)."""
+    import injuries
+    d = d.dropna(subset=["pnl"])
+    if d.empty:
+        return None
+    try:
+        data = injuries.load()
+        return pd.concat([injuries.flag_bets(w, int(wk), data=data) for wk, w in d.groupby("week")])
+    except Exception as e:
+        print(f"  (injury split skipped: {type(e).__name__}: {e})")
+        return None
+
+
 def scaled_stake(ev):
     return np.clip(ev / EV_REF, *STAKE_CAP)
 
@@ -536,6 +570,10 @@ def report(weeks=None, without=None):
         line(inst, first[first.instrument == inst])
     print("-" * 84)
     line("RECOMMENDED", rec(first))
+    flags = _report_injury_flags(rec(first))
+    if flags is not None:
+        line("  injury flag", flags[flags.inj_flag])
+        line("  no flag", flags[~flags.inj_flag])
     if len(latest) and not latest.index.equals(first.index):
         print("\nLATEST LOG (each game as last logged before kickoff)")
         line("RECOMMENDED", rec(latest))
@@ -546,6 +584,10 @@ def report(weeks=None, without=None):
                       + len(a.index.symmetric_difference(b.index)))
         print(f"  ({changed} game(s) where an ELWAY update changed the recommended bet; the gap between the two"
               f"\n   RECOMMENDED rows is what ELWAY's updates were worth)")
+    if flags is not None:
+        print("\nInjury flag: the bet backs a side whose starting QB was out, or that was missing 2+ more")
+        print("starters than its opponent, on that week's final injury report (injuries.py). Bets logged")
+        print("before the check existed are flagged after the fact; from now on flagged bets aren't recommended.")
     print(f"\nEV-scaled: stake = EV / {EV_REF} units, capped at {STAKE_CAP[0]}-{STAKE_CAP[1]} (flat = 1 unit each).")
     print("CLV = closing price minus your price, in cents of probability (Kalshi: the")
     print("last snapshot before kickoff; book: nflverse's closing moneyline). Positive")

@@ -226,9 +226,29 @@ it.
 - `EV +0.347` — expected profit per $1 staked under ELWAY: 0.602 / 0.447 − 1.
 - `*` — EV at or above the flag threshold (`--min-ev`, default 0.05).
 
-A very large EV usually means ELWAY and a liquid market strongly disagree.
-Check injury / QB news before trusting it: the market may know something the
-model hasn't absorbed.
+A very large EV usually means ELWAY and a liquid market strongly disagree,
+often because the market knows about an injury ELWAY hasn't absorbed.
+
+### Injury check (`injuries.py`)
+
+ELWAY posts on Tuesday, before the week's injury reports, so by kickoff the
+market has priced injuries ELWAY hasn't. A bet is **flagged** when the side it
+backs has its starting QB Out or Doubtful (and the opponent's isn't), or has 2+
+more starters Out/Doubtful than its opponent. A starter is a player who averaged
+60%+ of his side's snaps in the team's earlier games; Questionable players
+don't count. A flagged bet is never the recommended bet: the sheet lists it
+under INJURY CHECK and recommends the game's best unflagged bet, if any clears
+the EV threshold.
+
+Through week 9 of 2026, recommended bets that would have been flagged went
+6-15 (-5.7 units, CLV -1.0c); the rest went 21-24 (+16.0 units, CLV +0.8c).
+`bets.py report` keeps that split. The closing line sat about 1.5 points off
+ELWAY's per starting QB out and 0.3 per other starter.
+
+The report fills in Wednesday through Friday, so a Wednesday sheet sees little
+of it. `hq.py` reruns the check every time it builds the dashboard: the
+Analysis tab tags a flagged bet "injury", and a recommendation it removes shows
+as "dropped: injury". `python3 injuries.py <wk>` prints the week's report.
 
 ## Instruments
 
@@ -355,6 +375,7 @@ recommended**. My bets come from two places:
 | file | contents |
 |---|---|
 | `bets.py` | sheet, log, grade, report, ELWAY paste |
+| `injuries.py` | the injury check: starters and QBs Out/Doubtful per team from nflverse's report; flags bets backing the injured side |
 | `kalshi.py` | Kalshi public API client; `python3 kalshi.py <week>` saves a snapshot |
 | `odds_api.py` | The Odds API client (needs `ODDS_API_KEY`): every US book's moneyline / spread / total; `python3 odds_api.py <week> --show` |
 | `props.py` | player props: sheet (best price, SHOP and PROJ flags, history and matchup), log, grade, report |

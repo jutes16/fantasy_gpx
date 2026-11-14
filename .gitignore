@@ -48,3 +48,6 @@ nfl_model/__pycache__/pool_tracker.cpython-311.pyc
 
 # nflverse play-by-play (433 MB; re-fetch with drives.py fetch)
 nfl_model/data/pbp/
+
+# nflverse injury reports / snap counts / player ids for the injury check (re-fetchable)
+nfl_bets/data/injuries/
