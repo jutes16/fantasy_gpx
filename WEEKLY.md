@@ -46,7 +46,7 @@ reminds you (see the bottom of this file).
 | before 1:00 pm | `nfl_model` | Claude's picks, made in a **separate conversation**, then `python3 pool_tracker.py claude <wk> A,B,C,D,E` |
 | 10:36 am ⏰ | `nfl_bets` | `python3 props.py sheet <wk> --cached` (marks the week's PICKs) |
 | 10:36 am ⏰ | `nfl_fantasy` | `python3 fantasy_props.py <wk> --cached`, then `python3 sleeper_lineup.py jg337` |
-| after that | `nfl_bets` | `python3 hq.py`, then ask Claude to upload it (the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS)'s Analysis tab: this week's props and game bets) |
+| after that | `nfl_bets` | `python3 hq.py` (reruns the injury check on the game bets: Friday's report is final), then ask Claude to upload it (the [Bet Tracker](https://claude.ai/artifact/VUFMER8ut3xa9naR877HJS)'s Analysis tab: this week's props and game bets). Skip any game bet tagged "injury" |
 | from ~2.5 h before each kickoff ☁ | cloud | Kalshi snapshots (the closes); props for any game Thursday missed |
 
 Close `weekly_lines.xlsx` in Excel before the Sunday 10:36 run: it writes to

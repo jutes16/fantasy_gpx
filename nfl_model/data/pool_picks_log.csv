@@ -134,4 +134,4 @@ season,week,submitted_at,game,away,home,pool_line,mkt_line_at_submit,closing_lin
 2026,9,2026-11-08T13:58:13+00:00,GB @ NE,GB,NE,-2.5,-3.0,-3.0,NE -2.5,home,False,0.5,0.5339,slim,True,NE -2.5,home,0.5,L,L,-18.0,,-3.0,29.0,26.0,,,Action Network splits 2026-11-08T13:44,-3.5,44.5,0.629
 2026,9,2026-11-08T13:58:13+00:00,ARI @ SEA,ARI,SEA,-10.5,-8.5,-8.5,ARI +10.5,away,True,2.0,0.5675,EDGE,True,ARI +10.5,away,2.0,L,L,14.0,,-11.0,57.0,56.0,,,Action Network splits 2026-11-08T13:44,-9.5,37.5,0.804
 2026,9,2026-11-08T13:58:13+00:00,TB @ CHI,TB,CHI,-5.5,-6.0,-6.5,CHI -5.5,home,False,0.5,0.5248,slim,False,,,,W,L,3.0,,-6.0,68.0,68.0,,,Action Network splits 2026-11-08T13:44,-6.5,45.0,0.7
-2026,9,2026-11-08T13:58:13+00:00,BUF @ MIN,BUF,MIN,3.5,3.0,,MIN +3.5,home,False,0.5,0.5339,slim,False,,,,,,,,3.5,33.0,31.0,,,Action Network splits 2026-11-08T13:44,3.5,44.5,0.393
+2026,9,2026-11-08T13:58:13+00:00,BUF @ MIN,BUF,MIN,3.5,3.0,3.0,MIN +3.5,home,False,0.5,0.5339,slim,False,,,,W,L,-17.0,,3.5,33.0,31.0,,,Action Network splits 2026-11-08T13:44,3.5,44.5,0.393

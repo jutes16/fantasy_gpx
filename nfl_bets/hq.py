@@ -356,6 +356,12 @@ def games_week(week):
     log = log[(log.season == SEASON) & (log.week == week)]
     _, latest = bets.views(log)
     latest = latest if len(latest) else log
+    try:                                            # injuries as of now: the report fills in Wed-Fri
+        import injuries
+        latest = injuries.flag_bets(latest, week)
+    except Exception as e:
+        print(f"  injury check skipped ({type(e).__name__}: {e})")
+        latest = latest.assign(inj_flag=False, inj_note="")
     rows = []
     for x in latest.itertuples():
         strike = "" if pd.isna(x.strike) else f" {x.strike:g}"
@@ -375,7 +381,10 @@ def games_week(week):
                          venue="Kalshi" if str(x.instrument).startswith("kalshi") or x.instrument == "pair" else "Sportsbook",
                          elway_p=_num(x.p), cost=_num(x.cost), ev=_num(x.ev),
                          stake_scaled=round(float(bets.scaled_stake(x.ev)), 2),
-                         recommended=str(x.recommended).lower() == "true", phi="PHI" in (x.away, x.home),
+                         # a flagged bet is no longer recommended; injury_dropped marks one that was
+                         recommended=str(x.recommended).lower() == "true" and not x.inj_flag,
+                         injury_dropped=str(x.recommended).lower() == "true" and bool(x.inj_flag),
+                         injury=x.inj_note or None, phi="PHI" in (x.away, x.home),
                          team=x.team, side=x.side, held=None))
     held, used = _held(), set()
     for r in rows:                                  # your Kalshi bets on the sheet's own markets
