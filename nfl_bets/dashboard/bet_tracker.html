@@ -42,6 +42,9 @@
 #dash-root .bt-stats .bt-muted { color: var(--color-fg-muted); }
 #dash-root .bt-good { color: var(--color-ok); }
 #dash-root .bt-bad { color: var(--color-bad); }
+#dash-root .bt-dropped { text-decoration: line-through; opacity: 0.7; }
+#dash-root .bt-tag.bt-bad { color: var(--color-bad); }
+#dash-root .bt-inj-note { font-size: var(--cds-font-size-caption); color: var(--color-bad); white-space: normal; max-width: 28rem; }
 #dash-root .bt-chart { position: relative; min-height: 16rem; }
 #dash-root .bt-chart svg { display: block; overflow: visible; }
 #dash-root .bt-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 2; }
@@ -238,6 +241,7 @@
       </div>
       <p class="bt-note"><b>Prices as of <span data-source="games_week" data-field="as_of" data-row="0">—</span></b> (Kalshi asks then; sportsbook prices are nflverse's consensus line). Tick <b>Bet</b> on what you actually bet; add your stake and, if different, your price (Kalshi in cents, e.g. 38).</p>
       <p class="bt-note">ELWAY's simulated margins priced against Kalshi and the sportsbooks. One recommended bet per game: the best EV. Scaled stake = EV ÷ 0.15, capped 0.5–2u. ELWAY has rated PHI above the market every week since week 4; those bets are tagged.</p>
+      <p class="bt-note"><b>Injury check</b> (injuries.py, rerun each time the dashboard is rebuilt): a bet backing a side whose starting QB is Out/Doubtful, or that is missing 2+ more starters than its opponent, is tagged <span class="bt-bad">injury</span> and isn't recommended. ELWAY posts on Tuesday, before the injury reports, so these "edges" are mostly injuries the market has priced and ELWAY hasn't: such bets went 6–15 (−5.7u) through week 9. A recommendation it removed shows struck through as <span class="bt-bad">dropped: injury</span>. The report fills in Wednesday to Friday.</p>
       <div class="bt-scroll">
         <table class="bt-table" id="games-table" data-source="games_week" data-row-key="id">
           <thead><tr>
@@ -287,13 +291,13 @@
           <thead><tr>
             <th class="bt-r" data-field="rank">#</th><th data-field="pick">Pick</th><th class="bt-hide-narrow" data-field="game">Game</th>
             <th class="bt-r" data-field="win_rate">Win rate</th><th class="bt-r" data-field="pts_value">Value</th><th data-field="tier">Tier</th>
-            <th class="bt-r bt-hide-narrow" data-field="mkt_line">Market</th><th data-field="elway_lean">ELWAY</th>
+            <th class="bt-r" data-field="pool_line">Pool</th><th class="bt-r bt-hide-narrow" data-field="mkt_line">Market</th><th class="bt-r" data-field="elway_line">ELWAY</th>
             <th data-field="my_pick">Your pick</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <p class="bt-note">pool.py's card, the same as <code>python3 pool.py &lt;wk&gt;</code>: every game ranked by its expected cover rate; ★ = the top five, the recommended picks. Value = points the pool's line is off the market on that side (the model's main edge); tier: EDGE = 1+ point, slim = ½+, coin flip = within ½. Market = the market's line (home perspective, negative = home favored) as of the last refresh. ELWAY = the side ELWAY's projection leans at the pool's line, flagged where it disagrees with a recommended pick (it nudges the win rate by at most 2 points). Claude's picks stay separate (made in another conversation).</p>
+      <p class="bt-note">pool.py's card, the same as <code>python3 pool.py &lt;wk&gt;</code>: every game ranked by its expected cover rate; ★ = the top five, the recommended picks. Value = points the pool's line is off the market on that side (the model's main edge); tier: EDGE = 1+ point, slim = ½+, coin flip = within ½. Pool = the pool sheet's line and Market = the market's line (both home perspective, negative = home favored; market as of the last refresh). ELWAY = ELWAY's projected line, same perspective: green where it leans the same side as the pick at the pool's line, red where it leans the other side, plain where it matches the pool's line (it nudges the win rate by at most 2 points). Claude's picks stay separate (made in another conversation).</p>
     </article>
 
     <article class="bt-card" id="pool-me" data-source="pool_standings">
@@ -916,7 +920,13 @@ window.btMine = (() => {
   const tbl = document.getElementById('games-table');
   const title = document.getElementById('an-title');
   let all = [];
-  const bet = (v, r) => { const s = el('span', null, (r.recommended ? '★ ' : '') + v); if (r.phi) s.appendChild(el('span', 'bt-tag', 'PHI')); return s; };
+  const bet = (v, r) => {
+    const box = el('span');
+    box.append(el('span', r.injury_dropped ? 'bt-dropped' : null, (r.recommended ? '★ ' : '') + v));
+    if (r.phi) box.append(el('span', 'bt-tag', 'PHI'));
+    if (r.injury) box.append(el('span', 'bt-tag bt-bad', r.injury_dropped ? 'dropped: injury' : 'injury'), el('div', 'bt-inj-note', r.injury));
+    return box;
+  };
   const kick = (v) => { const t = new Date(v); return isNaN(t) ? v : d3.timeFormat('%a %-I:%M%p')(t).replace('AM', 'a').replace('PM', 'p'); };
   const gameCell = (v, r) => { const s = el('span'); s.append(window.btMine.control('game', r, `${r.game}: ${r.bet} (${r.type_name})`).wrap, document.createTextNode(v)); return s; };
   const cells = [['game', gameCell], ['bet', bet], ['price', window.bt.priceCell, 'bt-r'],
@@ -936,9 +946,9 @@ window.btMine = (() => {
     if (state.tab !== 'analysis') return;
     tbl.classList.toggle('dash-skeleton', d.status === 'loading');
     all = d.status === 'ok' ? d.data.map((r) => ({ ...r, elway_p: +r.elway_p, cost: +r.cost, ev: +r.ev, stake_scaled: +r.stake_scaled,
-      recommended: r.recommended === true || r.recommended === 'true' || r.recommended === 'True', phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
+      recommended: r.recommended === true || r.recommended === 'true' || r.recommended === 'True', injury_dropped: (r.injury_dropped === true || r.injury_dropped === 'true' || r.injury_dropped === 'True'), injury: r.injury || null, phi: r.phi === true || r.phi === 'true' || r.phi === 'True' })) : [];
     if (!tbl._sort) tbl._sort = { key: 'kickoff', dir: 1 };
-    table(tbl, () => all.filter((r) => state.gall === 'all' || r.recommended), cells, (r) => r.id,
+    table(tbl, () => all.filter((r) => state.gall === 'all' || r.recommended || r.injury_dropped), cells, (r) => r.id,
       (tr) => tr.classList.toggle('bt-marked', !!tr.querySelector('.bt-mark input:checked')));
   };
   window.btMine.onChange(() => draw());
@@ -989,17 +999,17 @@ window.btMine = (() => {
   const tbl = document.getElementById('pool-card-table');
   const title = document.getElementById('pool-card-title'), note = document.getElementById('pool-card-note');
   const pick = (v, r) => { const s = el('span', r.on_card ? 'bt-pick-over' : null, (r.on_card ? '★ ' : '') + v); if (r.started) s.appendChild(el('span', 'bt-tag', 'started')); return s; };
-  const lean = (v, r) => { if (!v) return '—'; const s = el('span', null, v); if (r.on_card && r.elway_agrees === false) s.appendChild(el('span', 'bt-tag', 'DISAGREES')); return s; };
-  const line = (v) => (v == null ? '—' : d3.format('+g')(v).replace('-', '−'));
+  const lean = (v, r) => (v == null || isNaN(v) ? '—' : el('span', r.elway_agrees === true ? 'bt-good' : r.elway_agrees === false ? 'bt-bad' : null, line(v)));
+  const line = (v) => (v == null || isNaN(v) ? '—' : d3.format('+.1~f')(v).replace('-', '−'));
   const cells = [['rank', String, 'bt-r'], ['pick', pick], ['game', String, 'bt-hide-narrow'],
     ['win_rate', (v) => d3.format('.1%')(v), 'bt-r'], ['pts_value', (v) => d3.format('+.1f')(v).replace('-', '−'), 'bt-r'], ['tier', String],
-    ['mkt_line', line, 'bt-r bt-hide-narrow'], ['elway_lean', lean], ['my_pick', (v) => v || '—']];
+    ['pool_line', line, 'bt-r'], ['mkt_line', line, 'bt-r bt-hide-narrow'], ['elway_line', lean, 'bt-r'], ['my_pick', (v) => v || '—']];
   const truthy = (v) => v === true || v === 'true' || v === 'True';
   const draw = () => {
     if (state.tab !== 'pool') return;
     const d = dash.data('pool_card');
     tbl.classList.toggle('dash-skeleton', d.status === 'loading');
-    const all = d.status === 'ok' ? d.data.map((r) => ({ ...r, rank: +r.rank, win_rate: +r.win_rate, pts_value: +r.pts_value, mkt_line: window.bt.num(r.mkt_line),
+    const all = d.status === 'ok' ? d.data.map((r) => ({ ...r, rank: +r.rank, win_rate: +r.win_rate, pts_value: +r.pts_value, pool_line: window.bt.num(r.pool_line), mkt_line: window.bt.num(r.mkt_line), elway_line: window.bt.num(r.elway_line),
       on_card: truthy(r.on_card), started: truthy(r.started), elway_agrees: r.elway_agrees == null || r.elway_agrees === '' ? null : truthy(r.elway_agrees) })) : [];
     if (all.length) {
       const card = all.filter((r) => r.on_card), sub = all.filter((r) => r.my_pick);
@@ -1197,7 +1207,7 @@ window.btMine = (() => {
     tiles.append(
       tile('Place', `${me.my_rank_tied ? 'T-' : ''}${ord(+me.my_rank)}`, `of ${me.entrants}`),
       tile('Points', String(me.my_points), behind > 0 ? `${behind} behind the leader (${me.leader_points})` : 'leading'),
-      tile('Quarters', `${me.my_q1} · ${me.my_q2}`, 'Q1 · Q2'),
+      tile('Quarters', [me.my_q1, me.my_q2, me.my_q3, me.my_q4].filter((q) => q != null).join(' · '), ['Q1', 'Q2', 'Q3', 'Q4'].slice(0, [me.my_q1, me.my_q2, me.my_q3, me.my_q4].filter((q) => q != null).length).join(' · ')),
       tile('Winning now', `$${(+me.my_pot).toLocaleString()}`, `2nd is at ${me.second_points}, 3rd at ${me.third_points}`));
     // dot strip of the field, mine highlighted
     const W = box.clientWidth, H = 96, m = { l: 16, r: 16, b: 24 };

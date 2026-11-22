@@ -12,6 +12,9 @@ Picks live in data/pool_field_picks.csv (git-ignored: other people's names):
     week, player, picks (A-B-C-D-E), sheet_points, picks_left
 sheet_points / picks_left are what the pool's sheet showed when the picks were
 copied (picks_left > 0 means a game hadn't finished, so the sheet was partial).
+A week with no picks (blank) counts the sheet's points as that many wins and the
+rest losses, with no teams: the standings and records stay right, but those
+weeks add nothing to the consensus or the team counts.
 Grading uses pool_line and margin from data/pool_picks_log.csv (log_week.py
 grade), the same way as your own picks: cover = side * (margin + pool_line).
 """
@@ -41,6 +44,11 @@ def graded(field=None):
     field = pd.read_csv(FIELD) if field is None else field
     g, rows = games(), []
     for r in field.itertuples():
+        if not isinstance(r.picks, str) or not r.picks.strip():   # points from the sheet, picks unknown
+            n = int(r.sheet_points)
+            rows += [dict(week=r.week, player=r.player, team=None, game=None, pool_line=None,
+                          result="W" if i < n else "L") for i in range(5)]
+            continue
         for t in r.picks.split("-"):
             game, s, line, m = g.get((r.week, t), (None, None, None, None))
             if game is None:
